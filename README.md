@@ -1,6 +1,7 @@
 # TRC20 USDT  Transaction Record Viewer
 
 This is a lightweight web application for querying and displaying TRC20 USDT transaction records of a specific address on the TRON blockchain.
+中文版說明在下方。
 
 ## Features
 
