@@ -197,6 +197,8 @@
         let sortField = null; // 当前排序字段
         let sortOrder = null; // 当前排序方向（asc/desc）
         let isLoadingComplete = false; // 是否已完成加载
+        let reachedMaxRecords = false; // 是否已達到最大記錄數
+        let ignoreMaxRecords = false; // 是否忽略最大記錄數限制
 
         function updateURLParams() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -372,7 +374,7 @@
                 document.getElementById("status").textContent = `已載入 ${totalRecords} 筆記錄`;
                 sortAndFilterTransactions();
 
-                if (txs.length < 200 || totalRecords >= maxRecords) {
+                if (txs.length < 200) {
                     document.getElementById("status").textContent = `載入完成，共 ${totalRecords} 筆記錄`;
                     isLoadingComplete = true;
                     
@@ -381,6 +383,18 @@
                     controlButton.textContent = "載入完成";
                     controlButton.disabled = true;
                     controlButton.classList.add("disabled-button");
+                    controlButton.setAttribute("aria-busy", "false");
+                    
+                    shouldContinue = false; // 結束迴圈
+                } else if (totalRecords >= maxRecords && !reachedMaxRecords && !ignoreMaxRecords) {
+                    // 達到最大記錄數，但可以繼續載入
+                    document.getElementById("status").textContent = `已載入 ${totalRecords} 筆記錄 (已達預設上限)`;
+                    reachedMaxRecords = true;
+                    isPaused = true;
+                    
+                    const controlButton = document.getElementById("controlButton");
+                    controlButton.textContent = "繼續載入";
+                    controlButton.style.backgroundColor = "var(--primary)";
                     controlButton.setAttribute("aria-busy", "false");
                     
                     shouldContinue = false; // 結束迴圈
@@ -396,10 +410,23 @@
             
             const controlButton = document.getElementById("controlButton");
             isPaused = !isPaused;
-            controlButton.textContent = isPaused ? "繼續載入" : "暫停載入";
-            controlButton.setAttribute("aria-busy", isPaused ? "false" : "true");
-
-            if (!isPaused) {
+            
+            if (isPaused) {
+                controlButton.textContent = "繼續載入";
+                controlButton.style.backgroundColor = "var(--primary)";
+                controlButton.setAttribute("aria-busy", "false");
+            } else {
+                controlButton.textContent = "暫停載入";
+                controlButton.style.backgroundColor = "red";
+                controlButton.setAttribute("aria-busy", "true");
+                
+                // 如果達到最大記錄數後繼續載入，重置標誌並忽略最大記錄數限制
+                if (reachedMaxRecords) {
+                    reachedMaxRecords = false;
+                    ignoreMaxRecords = true; // 設置忽略最大記錄數限制
+                    document.getElementById("status").textContent = `已載入 ${totalRecords} 筆記錄 (繼續載入中...)`;
+                }
+                
                 const urlParams = new URLSearchParams(window.location.search);
                 const address = urlParams.get("address");
                 if (address) {
