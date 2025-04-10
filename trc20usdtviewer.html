@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRC20 USDT 交易紀錄查詢</title>
+    <title id="title">TRC20 USDT 交易紀錄查詢</title>
     <!-- 引入 Pico.css 框架 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <style>
@@ -199,6 +199,166 @@
         let isLoadingComplete = false; // 是否已完成加载
         let reachedMaxRecords = false; // 是否已達到最大記錄數
         let ignoreMaxRecords = false; // 是否忽略最大記錄數限制
+        let currentLanguage = ""; // 當前語言
+
+        // 語言包
+        const translations = {
+            "zh-TW": {
+                title: "TRC20 USDT 交易紀錄查詢",
+                walletAddress: "錢包地址",
+                inputPlaceholder: "輸入 TRC20 錢包地址",
+                query: "查詢",
+                viewOnTronscan: "在 Tronscan 查看",
+                minAmount: "最小:",
+                maxAmount: "最大:",
+                peerAddress: "地址:",
+                peerAddressPlaceholder: "地址關鍵字",
+                type: "類型:",
+                typeAll: "全部",
+                typeReceived: "收款",
+                typeSent: "付款",
+                clear: "清除",
+                waiting: "等待查詢...",
+                loading: "已載入 {0} 筆記錄",
+                loadingLimit: "已載入 {0} 筆記錄 (已達預設上限)",
+                loadingContinue: "已載入 {0} 筆記錄 (繼續載入中...)",
+                complete: "載入完成，共 {0} 筆記錄",
+                pause: "暫停載入",
+                continue: "繼續載入",
+                loadComplete: "載入完成",
+                time: "時間",
+                transactionId: "交易 ID",
+                action: "類型",
+                amount: "金額",
+                peerAddressHeader: "對方地址",
+                footer: " 2025 TRC20 USDT 交易紀錄查詢 | 使用 Pico.css"
+            },
+            "en": {
+                title: "TRC20 USDT Transaction Viewer",
+                walletAddress: "Wallet Address",
+                inputPlaceholder: "Enter TRC20 wallet address",
+                query: "Query",
+                viewOnTronscan: "View on Tronscan",
+                minAmount: "Min:",
+                maxAmount: "Max:",
+                peerAddress: "Address:",
+                peerAddressPlaceholder: "Address keyword",
+                type: "Type:",
+                typeAll: "All",
+                typeReceived: "Received",
+                typeSent: "Sent",
+                clear: "Clear",
+                waiting: "Waiting for query...",
+                loading: "Loaded {0} records",
+                loadingLimit: "Loaded {0} records (reached default limit)",
+                loadingContinue: "Loaded {0} records (loading more...)",
+                complete: "Complete. Total records: {0}",
+                pause: "Pause",
+                continue: "Continue",
+                loadComplete: "Load Complete",
+                time: "Time",
+                transactionId: "Transaction ID",
+                action: "Type",
+                amount: "Amount",
+                peerAddressHeader: "Peer Address",
+                footer: " 2025 TRC20 USDT Transaction Viewer | Powered by Pico.css"
+            }
+        };
+
+        // 格式化字符串，替换 {0}, {1} 等占位符
+        function formatString(str, ...args) {
+            return str.replace(/{(\d+)}/g, (match, number) => {
+                return typeof args[number] !== 'undefined' ? args[number] : match;
+            });
+        }
+
+        // 获取当前用户语言并载入对应语言
+        function detectLanguage() {
+            // 首先检查 URL 参数是否有指定语言
+            const urlParams = new URLSearchParams(window.location.search);
+            let lang = urlParams.get("lang");
+            
+            // 如果没有指定，则使用浏览器语言
+            if (!lang) {
+                const browserLang = navigator.language || navigator.userLanguage;
+                // 检查是否为繁体中文
+                if (browserLang.startsWith("zh") && (browserLang.includes("TW") || browserLang.includes("HK"))) {
+                    lang = "zh-TW";
+                } else {
+                    lang = "en";
+                }
+            }
+            
+            // 确保语言包中有此语言，否则使用英文
+            if (!translations[lang]) {
+                lang = "en";
+            }
+            
+            currentLanguage = lang;
+            applyTranslations();
+        }
+
+        // 应用翻译到页面元素
+        function applyTranslations() {
+            const t = translations[currentLanguage];
+            
+            // 更新页面标题
+            document.title = t.title;
+            
+            // 更新表单元素
+            document.getElementById("walletAddressLabel").textContent = t.walletAddress;
+            document.getElementById("addressInput").placeholder = t.inputPlaceholder;
+            document.getElementById("queryButton").textContent = t.query;
+            
+            // 更新筛选条件
+            document.getElementById("minAmountLabel").textContent = t.minAmount;
+            document.getElementById("maxAmountLabel").textContent = t.maxAmount;
+            document.getElementById("peerAddressLabel").textContent = t.peerAddress;
+            document.getElementById("peerAddressFilter").placeholder = t.peerAddressPlaceholder;
+            document.getElementById("actionFilterLabel").textContent = t.type;
+            
+            // 更新下拉选单选项
+            const actionFilter = document.getElementById("actionFilter");
+            actionFilter.options[0].textContent = t.typeAll;
+            actionFilter.options[1].textContent = t.typeReceived;
+            actionFilter.options[2].textContent = t.typeSent;
+            
+            // 更新按钮和状态
+            document.getElementById("clearFiltersButton").textContent = t.clear;
+            document.getElementById("status").textContent = t.waiting;
+            
+            // 更新控制按钮，根据当前状态
+            const controlButton = document.getElementById("controlButton");
+            if (isLoadingComplete) {
+                controlButton.textContent = t.loadComplete;
+            } else if (isPaused) {
+                controlButton.textContent = t.continue;
+            } else {
+                controlButton.textContent = t.pause;
+            }
+            
+            // 更新表格标题
+            document.querySelector("th[data-field='timestamp']").textContent = t.time;
+            document.querySelector("th:nth-child(2)").textContent = t.transactionId;
+            document.querySelector("th[data-field='action']").textContent = t.action;
+            document.querySelector("th[data-field='value']").textContent = t.amount;
+            document.querySelector("th:nth-child(5)").textContent = t.peerAddressHeader;
+            
+            // 更新页面尾
+            document.querySelector("footer small").innerHTML = t.footer;
+            
+            // 更新 Tronscan 链接文字
+            if (document.getElementById("addressLink")) {
+                document.getElementById("addressLink").textContent = t.viewOnTronscan;
+            }
+        }
+
+        // 更新状态文字，考虑语言
+        function updateStatusText(key, ...args) {
+            const t = translations[currentLanguage];
+            const statusText = formatString(t[key], ...args);
+            document.getElementById("status").textContent = statusText;
+        }
 
         function updateURLParams() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -283,7 +443,7 @@
                 const row = table.insertRow();
 
                 const timestampCell = row.insertCell();
-                timestampCell.textContent = `${new Date(tx.timestamp).toLocaleString('zh-TW', {
+                timestampCell.textContent = `${new Date(tx.timestamp).toLocaleString(currentLanguage === "zh-TW" ? 'zh-TW' : 'en-US', {
                     timeZone: 'Asia/Taipei',
                     hour12: false
                 })}`;
@@ -299,7 +459,9 @@
                 transactionIdCell.appendChild(transactionLink);
 
                 const actionCell = row.insertCell();
-                actionCell.textContent = tx.action === "received" ? "收款" : "付款";
+                actionCell.textContent = tx.action === "received" ? 
+                    (currentLanguage === "zh-TW" ? "收款" : "Received") : 
+                    (currentLanguage === "zh-TW" ? "付款" : "Sent");
                 actionCell.className = tx.action === "received" ? "action-received" : "action-sent";
 
                 const valueCell = row.insertCell();
@@ -317,8 +479,11 @@
                 peerAddressCell.appendChild(peerAddressLink);
             });
             
-            // 更新結果數量
-            document.getElementById("resultCount").textContent = `顯示 ${transactions.length} 筆交易`;
+            // 更新结果数量
+            const t = translations[currentLanguage];
+            document.getElementById("resultCount").textContent = currentLanguage === "zh-TW" ? 
+                `顯示 ${transactions.length} 筆交易` : 
+                `Showing ${transactions.length} transactions`;
         }
 
         function sortTransactions(field) {
@@ -371,33 +536,33 @@
                 allTransactions = [...allTransactions, ...newTransactions];
                 totalRecords += newTransactions.length;
 
-                document.getElementById("status").textContent = `已載入 ${totalRecords} 筆記錄`;
+                updateStatusText("loading", totalRecords);
                 sortAndFilterTransactions();
 
                 if (txs.length < 200) {
-                    document.getElementById("status").textContent = `載入完成，共 ${totalRecords} 筆記錄`;
+                    updateStatusText("complete", totalRecords);
                     isLoadingComplete = true;
                     
-                    // 禁用暫停按鈕
+                    // 禁用暂停按钮
                     const controlButton = document.getElementById("controlButton");
-                    controlButton.textContent = "載入完成";
+                    controlButton.textContent = translations[currentLanguage].loadComplete;
                     controlButton.disabled = true;
                     controlButton.classList.add("disabled-button");
                     controlButton.setAttribute("aria-busy", "false");
                     
-                    shouldContinue = false; // 結束迴圈
+                    shouldContinue = false; // 结束循环
                 } else if (totalRecords >= maxRecords && !reachedMaxRecords && !ignoreMaxRecords) {
-                    // 達到最大記錄數，但可以繼續載入
-                    document.getElementById("status").textContent = `已載入 ${totalRecords} 筆記錄 (已達預設上限)`;
+                    // 达到最大记录数，但可以继续加载
+                    updateStatusText("loadingLimit", totalRecords);
                     reachedMaxRecords = true;
                     isPaused = true;
                     
                     const controlButton = document.getElementById("controlButton");
-                    controlButton.textContent = "繼續載入";
+                    controlButton.textContent = translations[currentLanguage].continue;
                     controlButton.style.backgroundColor = "var(--primary)";
                     controlButton.setAttribute("aria-busy", "false");
                     
-                    shouldContinue = false; // 結束迴圈
+                    shouldContinue = false; // 结束循环
                 }
 
                 params.max_timestamp = txs[txs.length - 1].block_timestamp - 1;
@@ -405,32 +570,32 @@
         }
 
         function togglePause() {
-            // 如果已經完成載入，則不執行任何操作
+            // 如果已经完成加载，则不执行任何操作
             if (isLoadingComplete) return;
             
             const controlButton = document.getElementById("controlButton");
             isPaused = !isPaused;
             
             if (isPaused) {
-                controlButton.textContent = "繼續載入";
+                controlButton.textContent = translations[currentLanguage].continue;
                 controlButton.style.backgroundColor = "var(--primary)";
                 controlButton.setAttribute("aria-busy", "false");
             } else {
-                controlButton.textContent = "暫停載入";
+                controlButton.textContent = translations[currentLanguage].pause;
                 controlButton.style.backgroundColor = "red";
                 controlButton.setAttribute("aria-busy", "true");
                 
-                // 如果達到最大記錄數後繼續載入，重置標誌並忽略最大記錄數限制
+                // 如果达到最大记录数后继续加载，重置标志并忽略最大记录数限制
                 if (reachedMaxRecords) {
                     reachedMaxRecords = false;
-                    ignoreMaxRecords = true; // 設置忽略最大記錄數限制
-                    document.getElementById("status").textContent = `已載入 ${totalRecords} 筆記錄 (繼續載入中...)`;
+                    ignoreMaxRecords = true; // 设置忽略最大记录数限制
+                    updateStatusText("loadingContinue", totalRecords);
                 }
                 
                 const urlParams = new URLSearchParams(window.location.search);
                 const address = urlParams.get("address");
                 if (address) {
-                    fetchAndDisplayTransactions(address); // 重新啟動資料載入
+                    fetchAndDisplayTransactions(address); // 重新启动数据加载
                 }
             }
         }
@@ -444,6 +609,9 @@
         }
 
         window.onload = () => {
+            // 首先检测语言并应用翻译
+            detectLanguage();
+            
             loadURLParams(); // 加载 URL 参数
             const urlParams = new URLSearchParams(window.location.search);
             const address = urlParams.get("address");
@@ -462,9 +630,27 @@
             document.getElementById("peerAddressFilter").addEventListener("input", sortAndFilterTransactions);
             document.getElementById("actionFilter").addEventListener("change", sortAndFilterTransactions);
             
-            // 更新排序圖示
+            // 更新排序图示
             updateSortIcons();
         };
+        
+        // 切换语言
+        function toggleLanguage() {
+            currentLanguage = currentLanguage === "zh-TW" ? "en" : "zh-TW";
+            
+            // 更新 URL 参数
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set("lang", currentLanguage);
+            history.replaceState(null, "", "?" + urlParams.toString());
+            
+            // 应用翻译
+            applyTranslations();
+            
+            // 如果已有交易数据，重新显示
+            if (allTransactions.length > 0) {
+                sortAndFilterTransactions();
+            }
+        }
     </script>
 </head>
 <body>
@@ -474,9 +660,9 @@
                 <div class="grid">
                     <div>
                         <label for="addressInput" style="display: flex; align-items: center;">
-                            <span style="width: 12em;">錢包地址</span>
-                            <input type="text" id="addressInput" name="address" placeholder="輸入 TRC20 錐包地址" required style="width: calc(100% - 6em);">
-                            <button type="submit" style="width: 150px;font-size: inherit; padding: 0.1rem 0.2rem;">查詢</button>
+                            <span id="walletAddressLabel" style="width: 12em;">錢包地址</span>
+                            <input type="text" id="addressInput" name="address" placeholder="輸入 TRC20 錢包地址" required style="width: calc(100% - 6em);">
+                            <button id="queryButton" type="submit" style="width: 150px;font-size: inherit; padding: 0.1rem 0.2rem;">查詢</button>
                         </label>
                     </div>
                 </div>
@@ -486,19 +672,19 @@
         <section style="margin-bottom: 0.5rem;">
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-size: 0.8rem;">
                 <div style="display: flex; align-items: center; gap: 0.3rem;">
-                    <label for="minAmount" style="margin: 0; white-space: nowrap;">最小:</label>
+                    <label id="minAmountLabel" for="minAmount" style="margin: 0; white-space: nowrap;">最小:</label>
                     <input type="number" id="minAmount" placeholder="最小金額" value="1" style="width: 80px; padding: 0.2rem; font-size: 0.7rem;">
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.3rem;">
-                    <label for="maxAmount" style="margin: 0; white-space: nowrap;">最大:</label>
+                    <label id="maxAmountLabel" for="maxAmount" style="margin: 0; white-space: nowrap;">最大:</label>
                     <input type="number" id="maxAmount" placeholder="最大金額" style="width: 80px; padding: 0.2rem; font-size: 0.7rem;">
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.3rem;">
-                    <label for="peerAddressFilter" style="margin: 0; white-space: nowrap;">地址:</label>
+                    <label id="peerAddressLabel" for="peerAddressFilter" style="margin: 0; white-space: nowrap;">地址:</label>
                     <input type="text" id="peerAddressFilter" placeholder="地址關鍵字" style="width: 120px; padding: 0.2rem; font-size: 0.7rem;">
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.3rem;">
-                    <label for="actionFilter" style="margin: 0; white-space: nowrap;">類型:</label>
+                    <label id="actionFilterLabel" for="actionFilter" style="margin: 0; white-space: nowrap;">類型:</label>
                     <select id="actionFilter" style="width: 80px; padding: 0.2rem;">
                         <option value="both"; font-size>全部</option>
                         <option value="received">收款</option>
@@ -507,6 +693,7 @@
                 </div>
                 <div style="display: flex; gap: 0.3rem; margin-left: auto;">
                     <button id="clearFiltersButton" class="secondary outline" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; margin: 0;">清除</button>
+                    <button id="languageToggle" class="secondary" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; margin: 0;">EN/中</button>
                     <div id="status" style="margin: 0 0.5rem; white-space: nowrap;">等待查詢...</div>
                     <div id="resultCount" style="margin-right: 0.5rem; white-space: nowrap;"></div>
                     <button id="controlButton" class="contrast" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; margin: 0; background-color: var(--primary);" onclick="this.style.backgroundColor = this.style.backgroundColor === 'var(--primary)' ? 'red' : 'var(--primary)';">暫停載入</button>
@@ -534,7 +721,7 @@
     
     <footer>
         <div class="container">
-            <small> 2025 TRC20 USDT 交易紀錄查詢 | 使用 <a href="https://picocss.com" target="_blank">Pico.css</a></small>
+            <small id="footerText"> 2025 TRC20 USDT 交易紀錄查詢 | 使用 <a href="https://picocss.com" target="_blank">Pico.css</a></small>
         </div>
     </footer>
 </body>
