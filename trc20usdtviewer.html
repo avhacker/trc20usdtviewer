@@ -1,42 +1,191 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRC20 Transactions Viewer</title>
+    <title>TRC20 USDT 交易紀錄查詢</title>
+    <!-- 引入 Pico.css 框架 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <style>
+        :root {
+            --primary: #1095c1;
+            --primary-hover: #0d7ea5;
+        }
+        
+        /* 自定義樣式 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0.5rem;
+        }
+        
+        header {
+            margin-bottom: 1rem;
+            padding: 0.5rem 0;
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        header h1 {
+            margin: 0;
+            font-size: 1.3rem;
+        }
+        
+        .filters {
+            background-color: #f6f6f6;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .filter-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .filter-group label {
+            margin-bottom: 0.2rem;
+            font-size: 0.85rem;
+        }
+        
+        .filter-group input, .filter-group select {
+            padding: 0.3rem;
+            font-size: 0.85rem;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        h4 {
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        button {
+            padding: 0.3rem 0.8rem;
+            font-size: 0.85rem;
+        }
+        
+        form button {
+            margin-top: 0.5rem;
+        }
+        
         table {
             width: 100%;
             border-collapse: collapse;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
         }
-        table, th, td {
-            border: 1px solid black;
-        }
+        
         th {
             background-color: #f0f0f0;
             font-weight: bold;
             cursor: pointer;
             position: relative;
+            white-space: nowrap;
+            padding: 0.5rem;
         }
+        
         th.sortable {
-            color: red;
+            color: var(--primary);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M10 4l-4 4h8l-4-4zM10 16l4-4H6l4 4z' fill='%231095c1'/%3E%3C/svg%3E");
+            background-size: 20px 20px;
+            background-repeat: no-repeat;
+            background-position: right center;
+            padding-right: 24px; /* 增加右邊空間避免文字壓到圖 */
+            cursor: pointer; /* 滑鼠變成小手，表示可以點 */
+            user-select: none; /* 禁止選取文字，手感更好 */
+            transition: background-color 0.2s, color 0.2s; /* 加點平滑變化 */
         }
+
         th .sort-icon {
             position: absolute;
             right: 8px;
             font-size: 12px;
         }
+        
         th:not(.sortable) {
             cursor: default;
         }
-        th, td {
-            padding: 8px;
+        
+        td {
+            padding: 0.5rem;
             text-align: left;
+            vertical-align: middle;
         }
-        #continueButton {
-            display: none;
-            margin-top: 10px;
-            margin-bottom: 50px;
+        
+        .transaction-link, .address-link {
+            color: var(--primary);
+            text-decoration: none;
+            word-break: break-all;
+        }
+        
+        .transaction-link:hover, .address-link:hover {
+            text-decoration: underline;
+            color: var(--primary-hover);
+        }
+        
+        .action-received {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+        
+        .action-sent {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        .transaction-cell {
+            min-width: 120px;
+            max-width: 180px;
+        }
+        
+        .amount-cell {
+            width: 100px;
+            max-width: 120px;
+            text-align: right;
+        }
+        
+        .address-cell {
+            min-width: 120px;
+            max-width: 150px;
+        }
+        
+        .disabled-button {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        footer {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+        }
+        
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .filter-group {
+                grid-template-columns: 1fr;
+            }
+            
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            header h1 {
+                font-size: 1.2rem;
+            }
         }
     </style>
     <script>
@@ -47,6 +196,7 @@
         let allTransactions = []; // 已加载的所有交易数据
         let sortField = null; // 当前排序字段
         let sortOrder = null; // 当前排序方向（asc/desc）
+        let isLoadingComplete = false; // 是否已完成加载
 
         function updateURLParams() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -137,24 +287,36 @@
                 })}`;
 
                 const transactionIdCell = row.insertCell();
+                transactionIdCell.className = "transaction-cell";
                 const transactionLink = document.createElement("a");
                 transactionLink.href = `https://tronscan.org/#/transaction/${tx.transactionId}`;
-                transactionLink.textContent = tx.transactionId;
+                transactionLink.textContent = tx.transactionId.substring(0, 6) + "..." + tx.transactionId.substring(tx.transactionId.length - 6);
+                transactionLink.title = tx.transactionId;
                 transactionLink.target = "_blank";
+                transactionLink.className = "transaction-link";
                 transactionIdCell.appendChild(transactionLink);
 
                 const actionCell = row.insertCell();
-                actionCell.textContent = tx.action;
+                actionCell.textContent = tx.action === "received" ? "收款" : "付款";
+                actionCell.className = tx.action === "received" ? "action-received" : "action-sent";
 
-                row.insertCell().textContent = tx.value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 });
+                const valueCell = row.insertCell();
+                valueCell.textContent = tx.value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 });
+                valueCell.className = "amount-cell";
 
                 const peerAddressCell = row.insertCell();
+                peerAddressCell.className = "address-cell";
                 const peerAddressLink = document.createElement("a");
                 peerAddressLink.href = `https://tronscan.org/#/address/${tx.peerAddress}`;
-                peerAddressLink.textContent = tx.peerAddress;
+                peerAddressLink.textContent = tx.peerAddress.substring(0, 6) + "..." + tx.peerAddress.substring(tx.peerAddress.length - 6);
+                peerAddressLink.title = tx.peerAddress;
                 peerAddressLink.target = "_blank";
+                peerAddressLink.className = "address-link";
                 peerAddressCell.appendChild(peerAddressLink);
             });
+            
+            // 更新結果數量
+            document.getElementById("resultCount").textContent = `顯示 ${transactions.length} 筆交易`;
         }
 
         function sortTransactions(field) {
@@ -165,6 +327,7 @@
                 sortOrder = "desc";
             }
             sortAndFilterTransactions();
+            updateSortIcons();
         }
 
         async function fetchAndDisplayTransactions(address) {
@@ -186,7 +349,8 @@
                 const newTransactions = txs.filter(tx => {
                     const value = parseFloat(tx.value) / Math.pow(10, tx.token_info.decimals);
                     return tx.token_info?.address === contractAddress &&
-                        !seenTransactionIds.has(tx.transaction_id);
+                        !seenTransactionIds.has(tx.transaction_id) &&
+                        tx.type === "Transfer"; // 只處理 Transfer 類型的交易
                 }).map(tx => {
                     const value = parseFloat(tx.value) / Math.pow(10, tx.token_info.decimals);
                     const peerAddress = tx.to === address ? tx.from : tx.to;
@@ -205,11 +369,20 @@
                 allTransactions = [...allTransactions, ...newTransactions];
                 totalRecords += newTransactions.length;
 
-                document.getElementById("status").textContent = `Loaded records: ${totalRecords}`;
+                document.getElementById("status").textContent = `已載入 ${totalRecords} 筆記錄`;
                 sortAndFilterTransactions();
 
                 if (txs.length < 200 || totalRecords >= maxRecords) {
-                    document.getElementById("status").textContent = `Completed. Total records: ${totalRecords}`;
+                    document.getElementById("status").textContent = `載入完成，共 ${totalRecords} 筆記錄`;
+                    isLoadingComplete = true;
+                    
+                    // 禁用暫停按鈕
+                    const controlButton = document.getElementById("controlButton");
+                    controlButton.textContent = "載入完成";
+                    controlButton.disabled = true;
+                    controlButton.classList.add("disabled-button");
+                    controlButton.setAttribute("aria-busy", "false");
+                    
                     shouldContinue = false; // 結束迴圈
                 }
 
@@ -218,9 +391,13 @@
         }
 
         function togglePause() {
+            // 如果已經完成載入，則不執行任何操作
+            if (isLoadingComplete) return;
+            
             const controlButton = document.getElementById("controlButton");
             isPaused = !isPaused;
-            controlButton.textContent = isPaused ? "Continue" : "Pause";
+            controlButton.textContent = isPaused ? "繼續載入" : "暫停載入";
+            controlButton.setAttribute("aria-busy", isPaused ? "false" : "true");
 
             if (!isPaused) {
                 const urlParams = new URLSearchParams(window.location.search);
@@ -229,6 +406,14 @@
                     fetchAndDisplayTransactions(address); // 重新啟動資料載入
                 }
             }
+        }
+
+        function clearFilters() {
+            document.getElementById("minAmount").value = "1.0";
+            document.getElementById("maxAmount").value = "";
+            document.getElementById("peerAddressFilter").value = "";
+            document.getElementById("actionFilter").value = "both";
+            sortAndFilterTransactions();
         }
 
         window.onload = () => {
@@ -242,52 +427,88 @@
             }
 
             document.getElementById("controlButton").onclick = togglePause;
+            document.getElementById("clearFiltersButton").onclick = clearFilters;
 
             // 绑定筛选条件实时更新事件
             document.getElementById("minAmount").addEventListener("input", sortAndFilterTransactions);
             document.getElementById("maxAmount").addEventListener("input", sortAndFilterTransactions);
             document.getElementById("peerAddressFilter").addEventListener("input", sortAndFilterTransactions);
             document.getElementById("actionFilter").addEventListener("change", sortAndFilterTransactions);
+            
+            // 更新排序圖示
+            updateSortIcons();
         };
     </script>
 </head>
 <body>
-    <h1 id="pageTitle">TRC20 Transactions Viewer</h1>
-    <form action="" method="GET">
-        <label for="addressInput">Main Address:</label>
-        <input type="text" id="addressInput" name="address">
-        <button type="submit">Submit</button>
-    </form>
-    <div>
-        <label for="minAmount">Min Amount:</label>
-        <input type="number" id="minAmount" placeholder="Min Amount" value="1">
-        <label for="maxAmount">Max Amount:</label>
-        <input type="number" id="maxAmount" placeholder="Max Amount">
-        <label for="peerAddressFilter">Peer Address:</label>
-        <input type="text" id="peerAddressFilter" placeholder="Peer Address">
-        <label for="actionFilter">Action:</label>
-        <select id="actionFilter">
-            <option value="both">Both</option>
-            <option value="received">Received</option>
-            <option value="sent">Sent</option>
-        </select>
-    </div>
-    <div id="status">Loading...</div>
-    <button id="controlButton">Pause</button>
-    <div id="results">
-        <table>
-            <thead>
-                <tr>
-                    <th class="sortable" data-field="timestamp" onclick="sortTransactions('timestamp')">Timestamp<span class="sort-icon"></span></th>
-                    <th>Transaction ID</th>
-                    <th class="sortable" data-field="action" onclick="sortTransactions('action')">Action<span class="sort-icon"></span></th>
-                    <th class="sortable" data-field="value" onclick="sortTransactions('value')">Amount<span class="sort-icon"></span></th>
-                    <th>Peer Address</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
+    <main class="container">
+        <section>
+            <form action="" method="GET">
+                <div class="grid">
+                    <div>
+                        <label for="addressInput" style="display: flex; align-items: center;">
+                            <span style="width: 12em;">錢包地址</span>
+                            <input type="text" id="addressInput" name="address" placeholder="輸入 TRC20 錐包地址" required style="width: calc(100% - 6em);">
+                            <button type="submit" style="width: 150px;font-size: inherit; padding: 0.1rem 0.2rem;">查詢</button>
+                        </label>
+                    </div>
+                </div>
+            </form>
+        </section>
+        
+        <section style="margin-bottom: 0.5rem;">
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-size: 0.8rem;">
+                <div style="display: flex; align-items: center; gap: 0.3rem;">
+                    <label for="minAmount" style="margin: 0; white-space: nowrap;">最小:</label>
+                    <input type="number" id="minAmount" placeholder="最小金額" value="1" style="width: 80px; padding: 0.2rem; font-size: 0.7rem;">
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.3rem;">
+                    <label for="maxAmount" style="margin: 0; white-space: nowrap;">最大:</label>
+                    <input type="number" id="maxAmount" placeholder="最大金額" style="width: 80px; padding: 0.2rem; font-size: 0.7rem;">
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.3rem;">
+                    <label for="peerAddressFilter" style="margin: 0; white-space: nowrap;">地址:</label>
+                    <input type="text" id="peerAddressFilter" placeholder="地址關鍵字" style="width: 120px; padding: 0.2rem; font-size: 0.7rem;">
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.3rem;">
+                    <label for="actionFilter" style="margin: 0; white-space: nowrap;">類型:</label>
+                    <select id="actionFilter" style="width: 80px; padding: 0.2rem;">
+                        <option value="both"; font-size>全部</option>
+                        <option value="received">收款</option>
+                        <option value="sent">付款</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 0.3rem; margin-left: auto;">
+                    <button id="clearFiltersButton" class="secondary outline" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; margin: 0;">清除</button>
+                    <div id="status" style="margin: 0 0.5rem; white-space: nowrap;">等待查詢...</div>
+                    <div id="resultCount" style="margin-right: 0.5rem; white-space: nowrap;"></div>
+                    <button id="controlButton" class="contrast" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; margin: 0;">暫停載入</button>
+                </div>
+            </div>
+        </section>
+        
+        <section>
+            <div id="results">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 10ch;" class="sortable" data-field="timestamp" onclick="sortTransactions('timestamp')">時間<span class="sort-icon"></span></th>
+                            <th style="width: 40ch;">交易 ID</th>
+                            <th style="width: 10ch;" class="sortable" data-field="action" onclick="sortTransactions('action')">類型<span class="sort-icon"></span></th>
+                            <th style="width: 20ch;" class="sortable" data-field="value" onclick="sortTransactions('value')">金額<span class="sort-icon"></span></th>
+                            <th style="width: 40ch;">對方地址</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <div class="container">
+            <small> 2025 TRC20 USDT 交易紀錄查詢 | 使用 <a href="https://picocss.com" target="_blank">Pico.css</a></small>
+        </div>
+    </footer>
 </body>
 </html>
-
