@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRC20 Transactions Viewer</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+        }
+        th.sortable {
+            color: red;
+        }
+        th .sort-icon {
+            position: absolute;
+            right: 8px;
+            font-size: 12px;
+        }
+        th:not(.sortable) {
+            cursor: default;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        #continueButton {
+            display: none;
+            margin-top: 10px;
+            margin-bottom: 50px;
+        }
+    </style>
+    <script>
+        let isPaused = false; // 用于控制是否暂停
+        let totalRecords = 0; // 已加载的交易记录数
+        const maxRecords = 10000; // 最大记录数
+        let params = { limit: 200 }; // 当前API查询参数
+        let allTransactions = []; // 已加载的所有交易数据
+        let sortField = null; // 当前排序字段
+        let sortOrder = null; // 当前排序方向（asc/desc）
+
+        function updateURLParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+
+            const minAmount = parseFloat(document.getElementById("minAmount").value) || 1.0;
+            const maxAmount = document.getElementById("maxAmount").value;
+            const peerAddressFilter = document.getElementById("peerAddressFilter").value;
+            const actionFilter = document.getElementById("actionFilter").value;
+
+            urlParams.set("min", minAmount);
+            if (maxAmount) urlParams.set("max", maxAmount); else urlParams.delete("max");
+            if (peerAddressFilter) urlParams.set("peer", peerAddressFilter); else urlParams.delete("peer");
+            if (actionFilter) urlParams.set("action", actionFilter);
+
+            if (sortField) urlParams.set("sortField", sortField);
+            if (sortOrder) urlParams.set("sortOrder", sortOrder);
+
+            history.replaceState(null, "", "?" + urlParams.toString());
+        }
+
+        function loadURLParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+
+            document.getElementById("minAmount").value = urlParams.get("min") || 1.0;
+            document.getElementById("maxAmount").value = urlParams.get("max") || "";
+            document.getElementById("peerAddressFilter").value = urlParams.get("peer") || "";
+            document.getElementById("actionFilter").value = urlParams.get("action") || "both";
+
+            sortField = urlParams.get("sortField") || null;
+            sortOrder = urlParams.get("sortOrder") || null;
+        }
+
+        function updateSortIcons() {
+            const sortableHeaders = document.querySelectorAll("th.sortable");
+            sortableHeaders.forEach(header => {
+                const field = header.getAttribute("data-field");
+                const sortIcon = header.querySelector(".sort-icon");
+                if (field === sortField) {
+                    sortIcon.textContent = sortOrder === "asc" ? "🔼" : "🔽";
+                } else {
+                    sortIcon.textContent = "";
+                }
+            });
+        }
+
+        function sortAndFilterTransactions() {
+            const minAmount = parseFloat(document.getElementById("minAmount").value);
+            const maxAmount = parseFloat(document.getElementById("maxAmount").value || null);
+            const peerAddressFilter = document.getElementById("peerAddressFilter").value.toLowerCase() || null;
+            const actionFilter = document.getElementById("actionFilter").value || "both";
+
+            let filteredTransactions = allTransactions.filter(tx => {
+                const isPeerAddressValid = !peerAddressFilter || tx.peerAddress.toLowerCase().includes(peerAddressFilter);
+                const isActionValid = actionFilter === "both" || tx.action === actionFilter;
+                return (!minAmount || tx.value >= minAmount) &&
+                    (!maxAmount || tx.value <= maxAmount) &&
+                    isPeerAddressValid &&
+                    isActionValid;
+            });
+
+            if (sortField) {
+                filteredTransactions.sort((a, b) => {
+                    if (sortOrder === "asc") {
+                        return a[sortField] > b[sortField] ? 1 : -1;
+                    } else {
+                        return a[sortField] < b[sortField] ? 1 : -1;
+                    }
+                });
+            }
+
+            updateURLParams(); // 将筛选和排序条件写回 URL
+            displayFilteredTransactions(filteredTransactions);
+        }
+
+        function displayFilteredTransactions(transactions) {
+            const table = document.querySelector("table tbody");
+            while (table.rows.length > 0) {
+                table.deleteRow(0);
+            }
+
+            transactions.forEach(tx => {
+                const row = table.insertRow();
+
+                const timestampCell = row.insertCell();
+                timestampCell.textContent = `${new Date(tx.timestamp).toLocaleString('zh-TW', {
+                    timeZone: 'Asia/Taipei',
+                    hour12: false
+                })}`;
+
+                const transactionIdCell = row.insertCell();
+                const transactionLink = document.createElement("a");
+                transactionLink.href = `https://tronscan.org/#/transaction/${tx.transactionId}`;
+                transactionLink.textContent = tx.transactionId;
+                transactionLink.target = "_blank";
+                transactionIdCell.appendChild(transactionLink);
+
+                const actionCell = row.insertCell();
+                actionCell.textContent = tx.action;
+
+                row.insertCell().textContent = tx.value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 });
+
+                const peerAddressCell = row.insertCell();
+                const peerAddressLink = document.createElement("a");
+                peerAddressLink.href = `https://tronscan.org/#/address/${tx.peerAddress}`;
+                peerAddressLink.textContent = tx.peerAddress;
+                peerAddressLink.target = "_blank";
+                peerAddressCell.appendChild(peerAddressLink);
+            });
+        }
+
+        function sortTransactions(field) {
+            if (sortField === field) {
+                sortOrder = sortOrder === "asc" ? "desc" : "asc";
+            } else {
+                sortField = field;
+                sortOrder = "desc";
+            }
+            sortAndFilterTransactions();
+        }
+
+        async function fetchAndDisplayTransactions(address) {
+            const contractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // USDT 合约地址
+            const apiUrl = `https://api.trongrid.io/v1/accounts/${address}/transactions/trc20`;
+            let seenTransactionIds = new Set();
+
+            let shouldContinue = true;
+            while (shouldContinue && !isPaused) {
+                const url = new URL(apiUrl);
+                Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+
+                const response = await fetch(url);
+                if (!response.ok) break;
+
+                const data = await response.json();
+                const txs = data.data || [];
+
+                const newTransactions = txs.filter(tx => {
+                    const value = parseFloat(tx.value) / Math.pow(10, tx.token_info.decimals);
+                    return tx.token_info?.address === contractAddress &&
+                        !seenTransactionIds.has(tx.transaction_id);
+                }).map(tx => {
+                    const value = parseFloat(tx.value) / Math.pow(10, tx.token_info.decimals);
+                    const peerAddress = tx.to === address ? tx.from : tx.to;
+                    const action = tx.to === address ? "received" : "sent";
+                    seenTransactionIds.add(tx.transaction_id);
+
+                    return {
+                        transactionId: tx.transaction_id,
+                        value,
+                        timestamp: tx.block_timestamp,
+                        action,
+                        peerAddress,
+                    };
+                });
+
+                allTransactions = [...allTransactions, ...newTransactions];
+                totalRecords += newTransactions.length;
+
+                document.getElementById("status").textContent = `Loaded records: ${totalRecords}`;
+                sortAndFilterTransactions();
+
+                if (txs.length < 200 || totalRecords >= maxRecords) {
+                    document.getElementById("status").textContent = `Completed. Total records: ${totalRecords}`;
+                    shouldContinue = false; // 結束迴圈
+                }
+
+                params.max_timestamp = txs[txs.length - 1].block_timestamp - 1;
+            }
+        }
+
+        function togglePause() {
+            const controlButton = document.getElementById("controlButton");
+            isPaused = !isPaused;
+            controlButton.textContent = isPaused ? "Continue" : "Pause";
+
+            if (!isPaused) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const address = urlParams.get("address");
+                if (address) {
+                    fetchAndDisplayTransactions(address); // 重新啟動資料載入
+                }
+            }
+        }
+
+        window.onload = () => {
+            loadURLParams(); // 加载 URL 参数
+            const urlParams = new URLSearchParams(window.location.search);
+            const address = urlParams.get("address");
+
+            if (address) {
+                document.getElementById("addressInput").value = address;
+                fetchAndDisplayTransactions(address); // 开始加载数据
+            }
+
+            document.getElementById("controlButton").onclick = togglePause;
+
+            // 绑定筛选条件实时更新事件
+            document.getElementById("minAmount").addEventListener("input", sortAndFilterTransactions);
+            document.getElementById("maxAmount").addEventListener("input", sortAndFilterTransactions);
+            document.getElementById("peerAddressFilter").addEventListener("input", sortAndFilterTransactions);
+            document.getElementById("actionFilter").addEventListener("change", sortAndFilterTransactions);
+        };
+    </script>
+</head>
+<body>
+    <h1 id="pageTitle">TRC20 Transactions Viewer</h1>
+    <form action="" method="GET">
+        <label for="addressInput">Main Address:</label>
+        <input type="text" id="addressInput" name="address">
+        <button type="submit">Submit</button>
+    </form>
+    <div>
+        <label for="minAmount">Min Amount:</label>
+        <input type="number" id="minAmount" placeholder="Min Amount" value="1">
+        <label for="maxAmount">Max Amount:</label>
+        <input type="number" id="maxAmount" placeholder="Max Amount">
+        <label for="peerAddressFilter">Peer Address:</label>
+        <input type="text" id="peerAddressFilter" placeholder="Peer Address">
+        <label for="actionFilter">Action:</label>
+        <select id="actionFilter">
+            <option value="both">Both</option>
+            <option value="received">Received</option>
+            <option value="sent">Sent</option>
+        </select>
+    </div>
+    <div id="status">Loading...</div>
+    <button id="controlButton">Pause</button>
+    <div id="results">
+        <table>
+            <thead>
+                <tr>
+                    <th class="sortable" data-field="timestamp" onclick="sortTransactions('timestamp')">Timestamp<span class="sort-icon"></span></th>
+                    <th>Transaction ID</th>
+                    <th class="sortable" data-field="action" onclick="sortTransactions('action')">Action<span class="sort-icon"></span></th>
+                    <th class="sortable" data-field="value" onclick="sortTransactions('value')">Amount<span class="sort-icon"></span></th>
+                    <th>Peer Address</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</body>
+</html>
+
