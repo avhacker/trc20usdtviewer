@@ -208,14 +208,11 @@
                 title: "TRC20 USDT 交易紀錄查詢",
                 walletAddress: "錢包地址",
                 inputPlaceholder: "輸入 TRC20 錢包地址",
-                minAmountPlaceholder: "",
-                maxAmountPlaceholder: "",
+                minAmountPlaceholder: "最小金額",
+                maxAmountPlaceholder: "最大金額",
                 query: "查詢",
                 viewOnTronscan: "在 Tronscan 查看",
-                minAmount: "最小金額:",
-                maxAmount: "最大金額:",
-                peerAddress: "對方地址:",
-                peerAddressPlaceholder: "部分匹配",
+                peerAddressPlaceholder: "對方地址關鍵字",
                 type: "類型:",
                 typeAll: "全部",
                 typeReceived: "收款",
@@ -240,14 +237,11 @@
                 title: "TRC20 USDT Transaction Viewer",
                 walletAddress: "Wallet Address",
                 inputPlaceholder: "Enter TRC20 wallet address",
-                minAmountPlaceholder: "",
-                maxAmountPlaceholder: "",
+                minAmountPlaceholder: "Min",
+                maxAmountPlaceholder: "Max",
                 query: "Query",
                 viewOnTronscan: "View on Tronscan",
-                minAmount: "Min:",
-                maxAmount: "Max:",
-                peerAddress: "Address:",
-                peerAddressPlaceholder: "Partial match",
+                peerAddressPlaceholder: "Peer address keyword",
                 type: "Type:",
                 typeAll: "All",
                 typeReceived: "Received",
@@ -260,7 +254,7 @@
                 complete: "Complete. Total records: {0}",
                 pause: "Pause",
                 continue: "Continue",
-                loadComplete: "Load Complete",
+                loadComplete: "Complete",
                 time: "Time",
                 transactionId: "Transaction ID",
                 action: "Type",
@@ -316,13 +310,9 @@
             document.getElementById("queryButton").textContent = t.query;
             
             // 更新筛选条件
-            document.getElementById("minAmountLabel").textContent = t.minAmount;
             document.getElementById("minAmount").placeholder = t.minAmountPlaceholder;
-            document.getElementById("maxAmountLabel").textContent = t.maxAmount;
             document.getElementById("maxAmount").placeholder = t.maxAmountPlaceholder;
-            document.getElementById("peerAddressLabel").textContent = t.peerAddress;
             document.getElementById("peerAddressFilter").placeholder = t.peerAddressPlaceholder;
-            document.getElementById("actionFilterLabel").textContent = t.type;
             
             // 更新下拉选单选项
             const actionFilter = document.getElementById("actionFilter");
@@ -588,6 +578,7 @@
             const controlButton = document.getElementById("controlButton");
             isPaused = !isPaused;
             
+            console.log("isPaused:", isPaused);
             if (isPaused) {
                 controlButton.textContent = translations[currentLanguage].continue;
                 controlButton.style.backgroundColor = "var(--primary)";
@@ -666,48 +657,41 @@
 </head>
 <body>
     <main class="container">
-        <section>
+        <section style="margin-bottom: 0.2rem;">
             <form action="" method="GET">
                 <div class="grid">
                     <div>
                         <label for="addressInput" style="display: flex; align-items: center;">
-                            <span id="walletAddressLabel" style="width: 12em;">錢包地址</span>
-                            <input type="text" id="addressInput" name="address" placeholder="輸入 TRC20 錢包地址" required style="width: calc(100% - 6em);">
-                            <button id="queryButton" type="submit" style="width: 150px;font-size: inherit; padding: 0.1rem 0.2rem;">查詢</button>
+                            <span id="walletAddressLabel" style="width: 5em;">錢包地址</span>
+                            <input type="text" id="addressInput" name="address" placeholder="輸入 TRC20 錢包地址" required style="width: 24rem;">
+                            <button id="queryButton" type="submit" style="width: 4rem;font-size: inherit; padding: 0.1rem 0.2rem; margin: 0 0.4rem;">查詢</button>
+                            <button id="controlButton" type="button" class="contrast" style="width: 4rem;padding: 0.2rem 0.2rem; font-size: 0.8rem; margin: 0 0.4rem;white-space: nowrap; background-color: var(--primary);">暫停載入</button>
+                            <button id="languageToggle" type="button" class="secondary" style="width: 4rem;padding: 0.2rem 0.2rem; font-size: 0.8rem; margin: 0 0.4rem;">EN/中</button>
                         </label>
                     </div>
                 </div>
             </form>
         </section>
-        
-        <section style="margin-bottom: 0.5rem;">
-            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-size: 0.8rem;">
+        <section style="margin-bottom: 0.2rem;">
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-size: 0.6rem;">
                 <div style="display: flex; align-items: center; gap: 0.3rem;">
-                    <label id="minAmountLabel" for="minAmount" style="margin: 0; white-space: nowrap;">最小:</label>
-                    <input type="number" id="minAmount" placeholder="最小金額" value="1" style="width: 80px; padding: 0.2rem; font-size: 0.7rem;">
+                    <input type="number" id="minAmount" placeholder="最小金額" value="1" style="width: 80px; height:20px; 0.2rem; font-size: 0.6rem;">
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.3rem;">
-                    <label id="maxAmountLabel" for="maxAmount" style="margin: 0; white-space: nowrap;">最大:</label>
-                    <input type="number" id="maxAmount" placeholder="最大金額" style="width: 80px; padding: 0.2rem; font-size: 0.7rem;">
+                    <input type="number" id="maxAmount" placeholder="最大金額" style="width: 80px; padding: 0.2rem; font-size: 0.6rem;">
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.3rem;">
-                    <label id="peerAddressLabel" for="peerAddressFilter" style="margin: 0; white-space: nowrap;">地址:</label>
-                    <input type="text" id="peerAddressFilter" placeholder="地址關鍵字" style="width: 120px; padding: 0.2rem 10rem; font-size: 0.7rem;">
+                    <input type="text" id="peerAddressFilter" placeholder="地址關鍵字" style="width: 16rem; padding: 0.2rem; font-size: 0.6rem;">
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.3rem;">
-                    <label id="actionFilterLabel" for="actionFilter" style="margin: 0; white-space: nowrap;">類型:</label>
-                    <select id="actionFilter" style="width: 80px; padding: 0.2rem;">
-                        <option value="both"; font-size>全部</option>
+                    <select id="actionFilter" style="width: 80px; padding: 0.2rem; font-size: 0.8rem;">
+                        <option value="both">全部</option>
                         <option value="received">收款</option>
                         <option value="sent">付款</option>
                     </select>
-                </div>
-                <div style="display: flex; gap: 0.3rem; margin-left: auto;">
-                    <button id="clearFiltersButton" class="secondary outline" style="padding: 0.2rem 1.5rem; font-size: 0.8rem; margin: 0;">清除</button>
-                    <button id="languageToggle" class="secondary" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; margin: 0;">EN/中</button>
-                    <div id="status" style="margin: 0 0.5rem; white-space: nowrap;">等待查詢...</div>
+                    <button id="clearFiltersButton" class="secondary outline" style="width: 6rem ;padding: 0.2rem 0.2rem; font-size: 0.8rem; margin: 0;">清除</button>
+                    <div id="status" style="margin: 0 0.5rem;font-size: 0.8rem;">等待查詢...</div>
                     <div id="resultCount" style="margin-right: 0.5rem; white-space: nowrap;"></div>
-                    <button id="controlButton" class="contrast" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; margin: 0; background-color: var(--primary);" onclick="this.style.backgroundColor = this.style.backgroundColor === 'var(--primary)' ? 'red' : 'var(--primary)';">暫停載入</button>
                 </div>
             </div>
         </section>
