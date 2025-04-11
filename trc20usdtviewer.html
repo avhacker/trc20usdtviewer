@@ -508,6 +508,9 @@
             while (shouldContinue && !isPaused) {
                 const url = new URL(apiUrl);
                 Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+                const urlstring = url.toString();
+                const paramsstring = urlstring.substring(urlstring.indexOf("?"));
+                console.log("Fetching transactions parameters:", paramsstring);
 
                 const response = await fetch(url);
                 if (!response.ok) break;
@@ -584,8 +587,6 @@
                 controlButton.setAttribute("aria-busy", "false");
             } else {
                 controlButton.textContent = translations[currentLanguage].pause;
-                controlButton.style.backgroundColor = "red";
-                controlButton.setAttribute("aria-busy", "true");
                 
                 // 如果达到最大记录数后继续加载，重置标志并忽略最大记录数限制
                 if (reachedMaxRecords) {
