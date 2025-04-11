@@ -207,17 +207,19 @@
                 title: "TRC20 USDT 交易紀錄查詢",
                 walletAddress: "錢包地址",
                 inputPlaceholder: "輸入 TRC20 錢包地址",
+                minAmountPlaceholder: "",
+                maxAmountPlaceholder: "",
                 query: "查詢",
                 viewOnTronscan: "在 Tronscan 查看",
-                minAmount: "最小:",
-                maxAmount: "最大:",
-                peerAddress: "地址:",
-                peerAddressPlaceholder: "地址關鍵字",
+                minAmount: "最小金額:",
+                maxAmount: "最大金額:",
+                peerAddress: "對方地址:",
+                peerAddressPlaceholder: "部分匹配",
                 type: "類型:",
                 typeAll: "全部",
                 typeReceived: "收款",
                 typeSent: "付款",
-                clear: "清除",
+                clear: "清除過濾條件",
                 waiting: "等待查詢...",
                 loading: "已載入 {0} 筆記錄",
                 loadingLimit: "已載入 {0} 筆記錄 (已達預設上限)",
@@ -237,17 +239,19 @@
                 title: "TRC20 USDT Transaction Viewer",
                 walletAddress: "Wallet Address",
                 inputPlaceholder: "Enter TRC20 wallet address",
+                minAmountPlaceholder: "",
+                maxAmountPlaceholder: "",
                 query: "Query",
                 viewOnTronscan: "View on Tronscan",
                 minAmount: "Min:",
                 maxAmount: "Max:",
                 peerAddress: "Address:",
-                peerAddressPlaceholder: "Address keyword",
+                peerAddressPlaceholder: "Partial match",
                 type: "Type:",
                 typeAll: "All",
                 typeReceived: "Received",
                 typeSent: "Sent",
-                clear: "Clear",
+                clear: "Clear filters",
                 waiting: "Waiting for query...",
                 loading: "Loaded {0} records",
                 loadingLimit: "Loaded {0} records (reached default limit)",
@@ -312,7 +316,9 @@
             
             // 更新筛选条件
             document.getElementById("minAmountLabel").textContent = t.minAmount;
+            document.getElementById("minAmount").placeholder = t.minAmountPlaceholder;
             document.getElementById("maxAmountLabel").textContent = t.maxAmount;
+            document.getElementById("maxAmount").placeholder = t.maxAmountPlaceholder;
             document.getElementById("peerAddressLabel").textContent = t.peerAddress;
             document.getElementById("peerAddressFilter").placeholder = t.peerAddressPlaceholder;
             document.getElementById("actionFilterLabel").textContent = t.type;
@@ -626,6 +632,7 @@
 
             document.getElementById("controlButton").onclick = togglePause;
             document.getElementById("clearFiltersButton").onclick = clearFilters;
+            document.getElementById("languageToggle").onclick = toggleLanguage; // 添加語言切換按鈕的點擊事件
 
             // 绑定筛选条件实时更新事件
             document.getElementById("minAmount").addEventListener("input", sortAndFilterTransactions);
@@ -684,7 +691,7 @@
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.3rem;">
                     <label id="peerAddressLabel" for="peerAddressFilter" style="margin: 0; white-space: nowrap;">地址:</label>
-                    <input type="text" id="peerAddressFilter" placeholder="地址關鍵字" style="width: 120px; padding: 0.2rem; font-size: 0.7rem;">
+                    <input type="text" id="peerAddressFilter" placeholder="地址關鍵字" style="width: 120px; padding: 0.2rem 10rem; font-size: 0.7rem;">
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.3rem;">
                     <label id="actionFilterLabel" for="actionFilter" style="margin: 0; white-space: nowrap;">類型:</label>
@@ -695,7 +702,7 @@
                     </select>
                 </div>
                 <div style="display: flex; gap: 0.3rem; margin-left: auto;">
-                    <button id="clearFiltersButton" class="secondary outline" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; margin: 0;">清除</button>
+                    <button id="clearFiltersButton" class="secondary outline" style="padding: 0.2rem 1.5rem; font-size: 0.8rem; margin: 0;">清除</button>
                     <button id="languageToggle" class="secondary" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; margin: 0;">EN/中</button>
                     <div id="status" style="margin: 0 0.5rem; white-space: nowrap;">等待查詢...</div>
                     <div id="resultCount" style="margin-right: 0.5rem; white-space: nowrap;"></div>
