@@ -396,10 +396,12 @@
             sortableHeaders.forEach(header => {
                 const field = header.getAttribute("data-field");
                 const sortIcon = header.querySelector(".sort-icon");
-                if (field === sortField) {
-                    sortIcon.textContent = sortOrder === "asc" ? "🔼" : "🔽";
-                } else {
-                    sortIcon.textContent = "";
+                if (sortIcon) { // 增加檢查，確保 sortIcon 不為 null
+                    if (field === sortField) {
+                        sortIcon.textContent = sortOrder === "asc" ? "🔼" : "🔽";
+                    } else {
+                        sortIcon.textContent = "";
+                    }
                 }
             });
         }
