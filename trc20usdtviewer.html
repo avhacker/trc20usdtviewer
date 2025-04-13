@@ -206,8 +206,7 @@
         const translations = {
             "zh-TW": {
                 title: "TRC20 USDT 交易紀錄查詢",
-                walletAddress: "錢包地址",
-                inputPlaceholder: "輸入 TRC20 錢包地址",
+                inputPlaceholder: "輸入要查詢的 TRC20 錢包地址",
                 minAmountPlaceholder: "最小金額",
                 maxAmountPlaceholder: "最大金額",
                 query: "查詢",
@@ -235,13 +234,15 @@
             },
             "en": {
                 title: "TRC20 USDT Transaction Viewer",
-                walletAddress: "Wallet Address",
-                inputPlaceholder: "Enter TRC20 wallet address",
+                inputPlaceholder: "Enter TRC20 wallet address to query",
                 minAmountPlaceholder: "Min",
                 maxAmountPlaceholder: "Max",
                 query: "Query",
                 viewOnTronscan: "View on Tronscan",
-                peerAddressPlaceholder: "Peer address keyword",
+                minAmount: "Min:",
+                maxAmount: "Max:",
+                peerAddress: "Address:",
+                peerAddressPlaceholder: "Partial match",
                 type: "Type:",
                 typeAll: "All",
                 typeReceived: "Received",
@@ -305,7 +306,6 @@
             document.title = t.title;
             
             // 更新表单元素
-            document.getElementById("walletAddressLabel").textContent = t.walletAddress;
             document.getElementById("addressInput").placeholder = t.inputPlaceholder;
             document.getElementById("queryButton").textContent = t.query;
             
@@ -662,7 +662,6 @@
                 <div class="grid">
                     <div>
                         <label for="addressInput" style="display: flex; align-items: center;">
-                            <span id="walletAddressLabel" style="width: 5em;">錢包地址</span>
                             <input type="text" id="addressInput" name="address" placeholder="輸入 TRC20 錢包地址" required style="width: 24rem;">
                             <button id="queryButton" type="submit" style="width: 4rem;font-size: inherit; padding: 0.1rem 0.2rem; margin: 0 0.4rem;">查詢</button>
                             <button id="controlButton" type="button" class="contrast" style="width: 4rem;padding: 0.2rem 0.2rem; font-size: 0.8rem; margin: 0 0.4rem;white-space: nowrap; background-color: var(--primary);">暫停載入</button>
@@ -674,24 +673,18 @@
         </section>
         <section style="margin-bottom: 0.2rem;">
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-size: 0.6rem;">
-                <div style="display: flex; align-items: center; gap: 0.3rem;">
-                    <input type="number" id="minAmount" placeholder="最小金額" value="1" style="width: 80px; height:20px; 0.2rem; font-size: 0.6rem;">
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.3rem;">
-                    <input type="number" id="maxAmount" placeholder="最大金額" style="width: 80px; padding: 0.2rem; font-size: 0.6rem;">
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.3rem;">
-                    <input type="text" id="peerAddressFilter" placeholder="地址關鍵字" style="width: 16rem; padding: 0.2rem; font-size: 0.6rem;">
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.3rem;">
-                    <select id="actionFilter" style="width: 80px; padding: 0.2rem; font-size: 0.8rem;">
-                        <option value="both">全部</option>
-                        <option value="received">收款</option>
-                        <option value="sent">付款</option>
-                    </select>
-                    <button id="clearFiltersButton" class="secondary outline" style="width: 6rem ;padding: 0.2rem 0.2rem; font-size: 0.8rem; margin: 0;">清除</button>
-                    <div id="status" style="margin: 0 0.5rem;font-size: 0.8rem;">等待查詢...</div>
-                    <div id="resultCount" style="margin-right: 0.5rem; white-space: nowrap;"></div>
+                <input type="number" id="minAmount" placeholder="最小金額" value="1" style="width: 80px; height:20px; font-size: 0.6rem;">
+                <input type="number" id="maxAmount" placeholder="最大金額" style="width: 80px; height:20px; font-size: 0.6rem;">
+                <input type="text" id="peerAddressFilter" placeholder="地址關鍵字" style="width: 16rem; height:20px; font-size: 0.8rem;">
+                <select id="actionFilter" style="width: 80px; padding: 0.2rem; font-size: 0.8rem;">
+                    <option value="both">全部</option>
+                    <option value="received">收款</option>
+                    <option value="sent">付款</option>
+                </select>
+                <button id="clearFiltersButton" class="secondary outline" style="width: 6rem; height: 36px; padding: 0 0.5rem; font-size: 0.8rem; margin: 0;">清除</button>
+                <div style="display: flex; flex-direction: column;">
+                    <div id="status" style="font-size: 0.8rem;">等待查詢...</div>
+                    <div id="resultCount" style="white-space: nowrap;"></div>
                 </div>
             </div>
         </section>
