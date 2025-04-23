@@ -209,6 +209,7 @@
                 inputPlaceholder: "輸入要查詢的 TRC20 錢包地址",
                 minAmountPlaceholder: "最小金額",
                 maxAmountPlaceholder: "最大金額",
+                walletBalance: "錢包餘額",
                 query: "查詢",
                 viewOnTronscan: "在 Tronscan 查看",
                 peerAddressPlaceholder: "對方地址關鍵字",
@@ -237,6 +238,7 @@
                 inputPlaceholder: "Enter TRC20 wallet address to query",
                 minAmountPlaceholder: "Min",
                 maxAmountPlaceholder: "Max",
+                walletBalance: "Wallet Balance",
                 query: "Query",
                 viewOnTronscan: "View on Tronscan",
                 minAmount: "Min:",
@@ -304,6 +306,8 @@
             
             // 更新页面标题
             document.title = t.title;
+
+            document.getElementById("walletBalanceLabel").textContent = t.walletBalance;
             
             // 更新表单元素
             document.getElementById("addressInput").placeholder = t.inputPlaceholder;
@@ -496,6 +500,24 @@
             updateSortIcons();
         }
 
+        async function fetchBalance(address) {
+            const apiUrl = `https://api.trongrid.io/v1/accounts/${address}`;
+            const response = await fetch(apiUrl);
+            // if (!response.ok) return null;
+            const data = await response.json();
+            const token_balances = data.data[0]['trc20'];
+            const contractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // USDT 合约地址
+            let usdt_balance = 0;
+            for (const token of token_balances) {
+                if ( contractAddress in token) {
+                    usdt_balance = token[contractAddress];
+                }
+            }
+            usdt_balance = usdt_balance /1e6;
+            console.log("錢包餘額: " + usdt_balance)
+            return usdt_balance;
+        }
+
         async function fetchAndDisplayTransactions(address) {
             const contractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // USDT 合约地址
             const apiUrl = `https://api.trongrid.io/v1/accounts/${address}/transactions/trc20`;
@@ -619,6 +641,12 @@
 
             if (address) {
                 document.getElementById("addressInput").value = address;
+                document.getElementById('balance').textContent = "...";
+                const balanceElement = document.getElementById('balance');
+                fetchBalance(address).then(balance => balanceElement.textContent = balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " USDT").catch(error => {
+                    console.error("Failed to fetch balance:", error);
+                    balanceElement.textContent = "N/A";
+                });
                 fetchAndDisplayTransactions(address); // 开始加载数据
             }
 
@@ -670,6 +698,11 @@
                     </div>
                 </div>
             </form>
+        </section>
+        <section>
+            <div>
+                <text id="walletBalanceLabel"></text>: <span id="balance"></span>
+            </div>
         </section>
         <section style="margin-bottom: 0.2rem;">
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-size: 0.6rem;">
