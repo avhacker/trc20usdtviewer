@@ -135,6 +135,52 @@
             color: var(--primary-hover);
         }
         
+        .copy-icon {
+            cursor: pointer;
+            margin-left: 5px;
+            color: var(--primary);
+            font-size: 0.85rem;
+            vertical-align: middle;
+            transition: color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+        }
+        
+        .copy-icon svg {
+            width: 16px;
+            height: 16px;
+            fill: var(--primary);
+        }
+        
+        .copy-icon:hover svg {
+            fill: var(--primary-hover);
+        }
+        
+        .copy-success svg {
+            fill: #2ecc71;
+        }
+        
+        /* 複製提示訊息樣式 */
+        .copy-tooltip {
+            position: fixed;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .copy-tooltip.show {
+            opacity: 1;
+        }
+        
         .action-received {
             color: #2ecc71;
             font-weight: bold;
@@ -192,7 +238,7 @@
     <script>
         let isPaused = false; // 用于控制是否暂停
         let totalRecords = 0; // 已加载的交易记录数
-        const maxRecords = 10000; // 最大记录数
+        let maxRecords = 10000; // 最大记录数
         let params = { limit: 200 }; // 当前API查询参数
         let allTransactions = []; // 已加载的所有交易数据
         let sortField = null; // 当前排序字段
@@ -459,7 +505,14 @@
                 transactionLink.title = tx.transactionId;
                 transactionLink.target = "_blank";
                 transactionLink.className = "transaction-link";
+                const copyIcon = document.createElement("span");
+                copyIcon.className = "copy-icon";
+                copyIcon.innerHTML = getCopyIconSvg();
+                copyIcon.onclick = () => {
+                    copyToClipboard(tx.transactionId, copyIcon);
+                };
                 transactionIdCell.appendChild(transactionLink);
+                transactionIdCell.appendChild(copyIcon);
 
                 const actionCell = row.insertCell();
                 actionCell.textContent = tx.action === "received" ? 
@@ -479,7 +532,14 @@
                 peerAddressLink.title = tx.peerAddress;
                 peerAddressLink.target = "_blank";
                 peerAddressLink.className = "address-link";
+                const copyIcon2 = document.createElement("span");
+                copyIcon2.className = "copy-icon";
+                copyIcon2.innerHTML = getCopyIconSvg();
+                copyIcon2.onclick = () => {
+                    copyToClipboard(tx.peerAddress, copyIcon2);
+                };
                 peerAddressCell.appendChild(peerAddressLink);
+                peerAddressCell.appendChild(copyIcon2);
             });
             
             // 更新结果数量
@@ -629,6 +689,45 @@
             document.getElementById("peerAddressFilter").value = "";
             document.getElementById("actionFilter").value = "both";
             sortAndFilterTransactions();
+        }
+
+        // 複製到剪貼板並顯示提示訊息的函數
+        function copyToClipboard(text, element) {
+            navigator.clipboard.writeText(text).then(() => {
+                // 顯示勾選圖標
+                element.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+                
+                // 創建提示訊息元素
+                const tooltip = document.createElement('div');
+                tooltip.className = 'copy-tooltip';
+                tooltip.textContent = currentLanguage === "zh-TW" ? '已複製！' : 'Copied!';
+                document.body.appendChild(tooltip);
+                
+                // 計算位置 (滑鼠位置或元素位置)
+                const rect = element.getBoundingClientRect();
+                tooltip.style.left = `${rect.left}px`;
+                tooltip.style.top = `${rect.top - 30}px`;
+                
+                // 顯示提示訊息
+                setTimeout(() => tooltip.classList.add('show'), 10);
+                
+                // 2秒後隱藏並移除提示訊息
+                setTimeout(() => {
+                    tooltip.classList.remove('show');
+                    setTimeout(() => {
+                        document.body.removeChild(tooltip);
+                        // 恢復原始複製圖標
+                        element.innerHTML = getCopyIconSvg();
+                    }, 300);
+                }, 2000);
+            });
+        }
+        
+        // 獲取複製圖標的 SVG 代碼
+        function getCopyIconSvg() {
+            return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M19.5 16.5L19.5 4.5L18.75 3.75H9L8.25 4.5L8.25 7.5L5.25 7.5L4.5 8.25V20.25L5.25 21H15L15.75 20.25V17.25H18.75L19.5 16.5ZM15.75 15.75L15.75 8.25L15 7.5L9.75 7.5V5.25L18 5.25V15.75H15.75ZM6 9L14.25 9L14.25 19.5L6 19.5L6 9Z"/>
+            </svg>`;
         }
 
         window.onload = () => {
