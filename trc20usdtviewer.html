@@ -249,6 +249,11 @@
     <script>
         let isPaused = false; // 用于控制是否暂停
         let totalRecords = 0; // 已加载的交易记录数
+        let timeDisplayMode = "local"; // 時間顯示模式: local, utc, age
+        let ageUpdateInterval = null; // 用于定期更新經過時間的計時器
+        
+        // 切換圖標的 SVG
+        const toggleIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 85.208 122.882" style="vertical-align: middle; margin-left: 4px;"><g><path fill-rule="evenodd" clip-rule="evenodd" d="M57.121,122.882l28.087-29.215L67.13,93.665V67.004v-0.506V41.932H47.111V66.5 l0,0v27.165l-18.081,0.002L57.121,122.882L57.121,122.882z M28.09,0l28.086,29.215l-18.078,0.002v26.661v0.505V80.95H18.08V56.382 l0,0V29.217L0,29.215L28.09,0L28.09,0z"/></g></svg>`;
         let maxRecords = 10000; // 最大记录数
         let params = { limit: 200 }; // 当前API查询参数
         let allTransactions = []; // 已加载的所有交易数据
@@ -284,6 +289,16 @@
                 continue: "繼續載入",
                 loadComplete: "載入完成",
                 time: "時間",
+                timeLocal: "本地時間",
+                timeUTC: "UTC 時間",
+                timeAge: "經過時間",
+                timeToggleHint: "點擊可切換時間模式",
+                ageDay: "{0}天{1}小時",
+                ageHour: "{0}小時{1}分",
+                ageMinute: "{0}分{1}秒",
+                ageSecond: "{0}秒",
+                ageSuffix: "之前",
+
                 transactionId: "交易 ID",
                 action: "類型",
                 amount: "金額",
@@ -318,6 +333,16 @@
                 continue: "Continue",
                 loadComplete: "Complete",
                 time: "Time",
+                timeLocal: "Local Time",
+                timeUTC: "UTC Time",
+                timeAge: "Age",
+                timeToggleHint: "Click to toggle time display mode",
+                ageDay: "{0}d {1}h",
+                ageHour: "{0}h {1}m",
+                ageMinute: "{0}m {1}s",
+                ageSecond: "{0}s",
+                ageSuffix: " ago",
+
                 transactionId: "Transaction ID",
                 action: "Type",
                 amount: "Amount",
@@ -481,10 +506,9 @@
                 const row = table.insertRow();
 
                 const timestampCell = row.insertCell();
-                timestampCell.textContent = `${new Date(tx.timestamp).toLocaleString(currentLanguage === "zh-TW" ? 'zh-TW' : 'en-US', {
-                    timeZone: 'Asia/Taipei',
-                    hour12: false
-                })}`;
+                timestampCell.className = "timestamp-cell";
+                timestampCell.dataset.timestamp = tx.timestamp;
+                updateTimestampDisplay(timestampCell, tx.timestamp);
 
                 const transactionIdCell = row.insertCell();
                 transactionIdCell.className = "transaction-cell";
@@ -744,6 +768,9 @@
             // 首先检测语言并应用翻译
             detectLanguage();
             
+            // 初始化時間標頭為本地時間
+            updateTimeHeader();
+            
             loadURLParams(); // 加载 URL 参数
             const urlParams = new URLSearchParams(window.location.search);
             const address = urlParams.get("address");
@@ -793,9 +820,140 @@
                 icon.title = translations[currentLanguage].tronscanTooltip;
             });
             
+            // 更新時間標頭
+            updateTimeHeader();
+            
+            // 更新所有時間单元格
+            document.querySelectorAll('.timestamp-cell').forEach(cell => {
+                updateTimestampDisplay(cell, parseInt(cell.dataset.timestamp));
+            });
+            
             // 如果已有交易数据，重新显示
-            if (allTransactions.length > 0) {
+            if (allTransactions.length > 0 && timeDisplayMode !== "age") {
                 sortAndFilterTransactions();
+            }
+        }
+        
+        // 切換時間顯示模式
+        function toggleTimeDisplayMode() {
+            // 循環切換模式: local -> utc -> age -> local
+            if (timeDisplayMode === "local") {
+                timeDisplayMode = "utc";
+            } else if (timeDisplayMode === "utc") {
+                timeDisplayMode = "age";
+                // 啟動定期更新經過時間
+                startAgeUpdates();
+            } else {
+                timeDisplayMode = "local";
+                // 停止定期更新
+                stopAgeUpdates();
+            }
+            
+            // 更新時間標頭
+            updateTimeHeader();
+            
+            // 更新所有時間单元格
+            document.querySelectorAll('.timestamp-cell').forEach(cell => {
+                updateTimestampDisplay(cell, parseInt(cell.dataset.timestamp));
+            });
+        }
+        
+        // 更新時間標頭文字
+        function updateTimeHeader() {
+            const timeHeader = document.getElementById("timeHeader");
+            if (!timeHeader) return;
+            
+            let headerText = "";
+            if (timeDisplayMode === "local") {
+                const offset = new Date().getTimezoneOffset() * -1;
+                const sign = offset >= 0 ? "+" : "-";
+                const hours = Math.floor(Math.abs(offset) / 60);
+                const minutes = Math.abs(offset) % 60;
+                const offsetStr = `UTC${sign}${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                headerText = `${translations[currentLanguage].timeLocal} ${toggleIconSvg}<br><small>(${offsetStr})</small>`;
+            } else if (timeDisplayMode === "utc") {
+                headerText = `${translations[currentLanguage].timeUTC} ${toggleIconSvg}`;
+            } else {
+                headerText = `${translations[currentLanguage].timeAge} ${toggleIconSvg}`;
+            }
+            
+            // 添加切換圖標（已在每個時間模式中添加）
+            timeHeader.innerHTML = `${headerText}<span class="sort-icon"></span>`;
+            
+            // 添加滑鼠懸停提示文字
+            timeHeader.title = translations[currentLanguage].timeToggleHint;
+        }
+        
+        // 更新時間顯示
+        function updateTimestampDisplay(cell, timestamp) {
+            if (!cell) return;
+            
+            if (timeDisplayMode === "local") {
+                // 本地時間模式
+                cell.textContent = new Date(timestamp).toLocaleString(currentLanguage === "zh-TW" ? 'zh-TW' : 'en-US', {
+                    hour12: false
+                });
+            } else if (timeDisplayMode === "utc") {
+                // UTC 時間
+                cell.textContent = new Date(timestamp).toLocaleString(currentLanguage === "zh-TW" ? 'zh-TW' : 'en-US', {
+                    timeZone: 'UTC',
+                    hour12: false
+                }) + " UTC";
+            } else {
+                // 經過時間 (age)
+                cell.textContent = getTimeDifference(timestamp);
+            }
+        }
+        
+        // 計算時間差異
+        function getTimeDifference(timestamp) {
+            const now = Date.now();
+            const diff = Math.floor((now - timestamp) / 1000); // 差異秒數
+            
+            const days = Math.floor(diff / 86400); // 86400 = 24 * 60 * 60
+            const hours = Math.floor((diff % 86400) / 3600);
+            const minutes = Math.floor((diff % 3600) / 60);
+            const seconds = diff % 60;
+            
+            let result = "";
+            const t = translations[currentLanguage];
+            
+            if (days > 0) {
+                // 如果有天數，顯示天和小時
+                result = formatString(t.ageDay, days, hours);
+            } else if (hours > 0) {
+                // 如果有小時，顯示小時和分鐘
+                result = formatString(t.ageHour, hours, minutes);
+            } else if (minutes > 0) {
+                // 如果有分鐘，顯示分鐘和秒
+                result = formatString(t.ageMinute, minutes, seconds);
+            } else {
+                // 只有秒
+                result = formatString(t.ageSecond, seconds);
+            }
+            
+            return result + t.ageSuffix;
+        }
+        
+        // 啟動定期更新經過時間
+        function startAgeUpdates() {
+            // 停止現有的計時器
+            stopAgeUpdates();
+            
+            // 每秒更新一次
+            ageUpdateInterval = setInterval(() => {
+                document.querySelectorAll('.timestamp-cell').forEach(cell => {
+                    const timestamp = parseInt(cell.dataset.timestamp);
+                    cell.textContent = getTimeDifference(timestamp);
+                });
+            }, 1000);
+        }
+        
+        // 停止定期更新
+        function stopAgeUpdates() {
+            if (ageUpdateInterval) {
+                clearInterval(ageUpdateInterval);
+                ageUpdateInterval = null;
             }
         }
     </script>
@@ -842,13 +1000,13 @@
         <section>
             <div id="results">
                 <table>
-                    <thead>
+                    <thead style="font-size: 0.75rem;">
                         <tr>
-                            <th style="width: 10ch;" class="sortable" data-field="timestamp" onclick="sortTransactions('timestamp')">時間<span class="sort-icon"></span></th>
-                            <th style="width: 40ch;">交易 ID</th>
-                            <th style="width: 10ch;" class="sortable" data-field="action" onclick="sortTransactions('action')">類型<span class="sort-icon"></span></th>
-                            <th style="width: 20ch;" class="sortable" data-field="value" onclick="sortTransactions('value')">金額<span class="sort-icon"></span></th>
-                            <th style="width: 40ch;">對方地址</th>
+                            <th style="width: 16ch; font-weight: normal; white-space: normal; line-height: 1.1;" class="sortable" data-field="timestamp" onclick="toggleTimeDisplayMode()" id="timeHeader" title="點擊可切換時間模式"></th>
+                            <th style="width: 40ch; font-weight: normal;">交易 ID</th>
+                            <th style="width: 10ch; font-weight: normal;" class="sortable" data-field="action" onclick="sortTransactions('action')">類型<span class="sort-icon"></span></th>
+                            <th style="width: 20ch; font-weight: normal;" class="sortable" data-field="value" onclick="sortTransactions('value')">金額<span class="sort-icon"></span></th>
+                            <th style="width: 40ch; font-weight: normal;">對方地址</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
