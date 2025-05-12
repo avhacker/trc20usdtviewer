@@ -270,6 +270,9 @@
                 title: "TRC20 USDT 交易紀錄查詢",
                 inputPlaceholder: "輸入要查詢的 TRC20 錢包地址",
                 minAmountPlaceholder: "最小金額",
+                totalStats: "交易統計",
+                totalReceived: "總收款",
+                totalSent: "總付款",
                 maxAmountPlaceholder: "最大金額",
                 walletBalance: "錢包餘額",
                 query: "查詢",
@@ -305,7 +308,9 @@
                 copyTooltip: "複製",
                 tronscanTooltip: "Tronscan 網站連結",
                 peerAddressHeader: "對方地址",
-                footer: " 2025 TRC20 USDT 交易紀錄查詢 | 使用 <a href=\"https://picocss.com\" target=\"_blank\">Pico.css</a> | <a href=\"mailto:avhacker@gmail.com\">avhacker@gmail.com</a>"
+                footer: " 2025 TRC20 USDT 交易紀錄查詢 | 使用 <a href=\"https://picocss.com\" target=\"_blank\">Pico.css</a> | <a href=\"mailto:avhacker@gmail.com\">avhacker@gmail.com</a>",
+                filteredTotalReceived: "過濾後總收款",
+                filteredTotalSent: "過濾後總付款"
             },
             "en": {
                 title: "TRC20 USDT Transaction Viewer",
@@ -395,6 +400,11 @@
 
             document.getElementById("walletBalanceLabel").textContent = t.walletBalance;
             
+            // 更新統計數據標籤
+            document.getElementById("totalStatsLabel").textContent = t.totalStats;
+            document.getElementById("totalReceivedLabel").textContent = t.totalReceived;
+            document.getElementById("totalSentLabel").textContent = t.totalSent;
+            
             // 更新表单元素
             document.getElementById("addressInput").placeholder = t.inputPlaceholder;
             document.getElementById("queryButton").textContent = t.query;
@@ -481,6 +491,22 @@
                     isPeerAddressValid &&
                     isActionValid;
             });
+
+            // 計算過濾後的總收款量和總付款量
+            let totalReceived = 0;
+            let totalSent = 0;
+            
+            filteredTransactions.forEach(tx => {
+                if (tx.action === "received") {
+                    totalReceived += tx.value;
+                } else if (tx.action === "sent") {
+                    totalSent += tx.value;
+                }
+            });
+            
+            // 將計算結果存儲為全局變數，以便在其他函數中使用
+            window.filteredTotalReceived = totalReceived;
+            window.filteredTotalSent = totalSent;
 
             if (sortField) {
                 filteredTransactions.sort((a, b) => {
@@ -581,6 +607,10 @@
             document.getElementById("resultCount").textContent = currentLanguage === "zh-TW" ? 
                 `顯示 ${transactions.length} 筆交易` : 
                 `Showing ${transactions.length} transactions`;
+                
+            // 更新總收款量和總付款量
+            document.getElementById("totalReceived").textContent = window.filteredTotalReceived.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 });
+            document.getElementById("totalSent").textContent = window.filteredTotalSent.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 });
         }
 
         function sortTransactions(field) {
@@ -977,6 +1007,11 @@
         <section>
             <div>
                 <text id="walletBalanceLabel"></text>: <span id="balance"></span>
+            </div>
+            <div>
+                <text id="totalStatsLabel">交易統計</text>: 
+                <span id="totalReceivedLabel">總收款</span>: <span id="totalReceived">0</span> USDT | 
+                <span id="totalSentLabel">總付款</span>: <span id="totalSent">0</span> USDT
             </div>
         </section>
         <section style="margin-bottom: 0.2rem;">
