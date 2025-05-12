@@ -98,20 +98,39 @@
         
         th.sortable {
             color: var(--primary);
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M10 4l-4 4h8l-4-4zM10 16l4-4H6l4 4z' fill='%231095c1'/%3E%3C/svg%3E");
-            background-size: 20px 20px;
-            background-repeat: no-repeat;
-            background-position: right center;
-            padding-right: 24px; /* 增加右邊空間避免文字壓到圖 */
-            cursor: pointer; /* 滑鼠變成小手，表示可以點 */
+            cursor: default; /* 整個標頭不再是指針樣式 */
             user-select: none; /* 禁止選取文字，手感更好 */
             transition: background-color 0.2s, color 0.2s; /* 加點平滑變化 */
+            position: relative; /* 為內部元素定位做準備 */
+        }
+        
+        .time-display, .text-content {
+            display: inline-block;
+            cursor: pointer; /* 時間顯示區域顯示指針樣式 */
+            padding-right: 25px; /* 為排序圖標留出空間 */
+            width: calc(100% - 25px); /* 確保文字內容不會與排序圖標重疊 */
+        }
+        
+        .time-display:hover, .text-content:hover {
+            color: var(--primary-hover);
         }
 
         th .sort-icon {
             position: absolute;
             right: 8px;
-            font-size: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M10 4l-4 4h8l-4-4zM10 16l4-4H6l4 4z' fill='%231095c1'/%3E%3C/svg%3E");
+            background-size: 20px 20px;
+            background-repeat: no-repeat;
+            background-position: center;
+            cursor: pointer;
+        }
+        
+        th .sort-icon:hover {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M10 4l-4 4h8l-4-4zM10 16l4-4H6l4 4z' fill='%230d7ea5'/%3E%3C/svg%3E");
         }
         
         th:not(.sortable) {
@@ -947,6 +966,9 @@
             const timeHeader = document.getElementById("timeHeader");
             if (!timeHeader) return;
             
+            const timeDisplayElement = timeHeader.querySelector('.time-display');
+            if (!timeDisplayElement) return;
+            
             let headerText = "";
             if (timeDisplayMode === "local") {
                 const offset = new Date().getTimezoneOffset() * -1;
@@ -961,8 +983,8 @@
                 headerText = `${translations[currentLanguage].timeAge} ${toggleIconSvg}`;
             }
             
-            // 添加切換圖標（已在每個時間模式中添加）
-            timeHeader.innerHTML = `${headerText}<span class="sort-icon"></span>`;
+            // 更新時間顯示元素的內容
+            timeDisplayElement.innerHTML = headerText;
             
             // 添加滑鼠懸停提示文字
             timeHeader.title = translations[currentLanguage].timeToggleHint;
@@ -1094,10 +1116,10 @@
                 <table>
                     <thead style="font-size: 0.75rem;">
                         <tr>
-                            <th style="width: 16ch; font-weight: normal; white-space: normal; line-height: 1.1;" class="sortable" data-field="timestamp" onclick="toggleTimeDisplayMode()" id="timeHeader" title="點擊可切換時間模式"></th>
+                            <th style="width: 16ch; font-weight: normal; white-space: normal; line-height: 1.1;" class="sortable" data-field="timestamp" id="timeHeader" title="點擊可切換時間模式"><span class="time-display" onclick="toggleTimeDisplayMode()"></span><span class="sort-icon" onclick="sortTransactions('timestamp')"></span></th>
                             <th style="width: 16ch; font-weight: normal;">交易 ID</th>
-                            <th style="width: 6ch; font-weight: normal;" class="sortable" data-field="action" onclick="sortTransactions('action')">類型<span class="sort-icon"></span></th>
-                            <th style="width: 16ch; font-weight: normal;" class="sortable" data-field="value" onclick="sortTransactions('value')">金額<span class="sort-icon"></span></th>
+                            <th style="width: 6ch; font-weight: normal;" class="sortable" data-field="action"><span class="text-content" onclick="sortTransactions('action')">類型</span><span class="sort-icon" onclick="sortTransactions('action')"></span></th>
+                            <th style="width: 16ch; font-weight: normal;" class="sortable" data-field="value"><span class="text-content" onclick="sortTransactions('value')">金額</span><span class="sort-icon" onclick="sortTransactions('value')"></span></th>
                             <th style="width: 32h; font-weight: normal;">對方地址</th>
                         </tr>
                     </thead>
