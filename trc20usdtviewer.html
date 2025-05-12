@@ -273,6 +273,8 @@
                 totalStats: "交易統計",
                 totalReceived: "總收款",
                 totalSent: "總付款",
+                peerAddressInclude: "包含",
+                peerAddressExclude: "排除",
                 maxAmountPlaceholder: "最大金額",
                 walletBalance: "錢包餘額",
                 query: "查詢",
@@ -313,12 +315,14 @@
                 filteredTotalSent: "過濾後總付款"
             },
             "en": {
-                title: "TRC20 USDT Transaction Viewer",
-                inputPlaceholder: "Enter TRC20 wallet address to query",
-                minAmountPlaceholder: "Min",
-                maxAmountPlaceholder: "Max",
-                walletBalance: "Wallet Balance",
-                query: "Query",
+                title: "TRC20 USDT Transaction History",
+                inputPlaceholder: "Enter TRC20 wallet address",
+                minAmountPlaceholder: "Min amount",
+                totalStats: "Transaction Statistics",
+                totalReceived: "Total Received",
+                totalSent: "Total Sent",
+                peerAddressInclude: "Include",
+                peerAddressExclude: "Exclude",
                 viewOnTronscan: "View on Tronscan",
                 minAmount: "Min:",
                 maxAmount: "Max:",
@@ -394,6 +398,7 @@
         // 应用翻译到页面元素
         function applyTranslations() {
             const t = translations[currentLanguage];
+            const urlParams = new URLSearchParams(window.location.search);
             
             // 更新页面标题
             document.title = t.title;
@@ -413,6 +418,28 @@
             document.getElementById("minAmount").placeholder = t.minAmountPlaceholder;
             document.getElementById("maxAmount").placeholder = t.maxAmountPlaceholder;
             document.getElementById("peerAddressFilter").placeholder = t.peerAddressPlaceholder;
+            
+            // 更新地址過濾類型選項
+            const peerAddressFilterTypeSelect = document.getElementById("peerAddressFilterType");
+            if (peerAddressFilterTypeSelect) {
+                // 清空現有選項
+                peerAddressFilterTypeSelect.innerHTML = '';
+                
+                // 重新創建選項，確保文字來自翻譯
+                const includeOption = document.createElement('option');
+                includeOption.value = 'include';
+                includeOption.textContent = t.peerAddressInclude;
+                
+                const excludeOption = document.createElement('option');
+                excludeOption.value = 'exclude';
+                excludeOption.textContent = t.peerAddressExclude;
+                
+                peerAddressFilterTypeSelect.appendChild(includeOption);
+                peerAddressFilterTypeSelect.appendChild(excludeOption);
+                
+                // 恢復之前的選擇
+                peerAddressFilterTypeSelect.value = urlParams.get("peerType") || "include";
+            }
             
             // 更新下拉选单选项
             // 更新页面尾
@@ -437,11 +464,18 @@
             const minAmount = parseFloat(document.getElementById("minAmount").value) || 1.0;
             const maxAmount = document.getElementById("maxAmount").value;
             const peerAddressFilter = document.getElementById("peerAddressFilter").value;
+            const peerAddressFilterType = document.getElementById("peerAddressFilterType").value;
             const actionFilter = document.getElementById("actionFilter").value;
 
             urlParams.set("min", minAmount);
             if (maxAmount) urlParams.set("max", maxAmount); else urlParams.delete("max");
-            if (peerAddressFilter) urlParams.set("peer", peerAddressFilter); else urlParams.delete("peer");
+            if (peerAddressFilter) {
+                urlParams.set("peer", peerAddressFilter);
+                urlParams.set("peerType", peerAddressFilterType);
+            } else {
+                urlParams.delete("peer");
+                urlParams.delete("peerType");
+            }
             if (actionFilter) urlParams.set("action", actionFilter);
 
             if (sortField) urlParams.set("sortField", sortField);
@@ -456,6 +490,7 @@
             document.getElementById("minAmount").value = urlParams.get("min") || 1.0;
             document.getElementById("maxAmount").value = urlParams.get("max") || "";
             document.getElementById("peerAddressFilter").value = urlParams.get("peer") || "";
+            document.getElementById("peerAddressFilterType").value = urlParams.get("peerType") || "include";
             document.getElementById("actionFilter").value = urlParams.get("action") || "both";
 
             sortField = urlParams.get("sortField") || null;
@@ -481,10 +516,21 @@
             const minAmount = parseFloat(document.getElementById("minAmount").value);
             const maxAmount = parseFloat(document.getElementById("maxAmount").value || null);
             const peerAddressFilter = document.getElementById("peerAddressFilter").value.toLowerCase() || null;
+            const peerAddressFilterType = document.getElementById("peerAddressFilterType").value;
             const actionFilter = document.getElementById("actionFilter").value || "both";
 
             let filteredTransactions = allTransactions.filter(tx => {
-                const isPeerAddressValid = !peerAddressFilter || tx.peerAddress.toLowerCase().includes(peerAddressFilter);
+                // 根據用戶選擇的過濾類型（包含/排除）來判斷地址是否符合條件
+                let isPeerAddressValid = true;
+                if (peerAddressFilter) {
+                    const addressIncludesPattern = tx.peerAddress.toLowerCase().includes(peerAddressFilter);
+                    if (peerAddressFilterType === "include") {
+                        isPeerAddressValid = addressIncludesPattern;
+                    } else { // exclude
+                        isPeerAddressValid = !addressIncludesPattern;
+                    }
+                }
+                
                 const isActionValid = actionFilter === "both" || tx.action === actionFilter;
                 return (!minAmount || tx.value >= minAmount) &&
                     (!maxAmount || tx.value <= maxAmount) &&
@@ -751,6 +797,7 @@
             document.getElementById("minAmount").value = "1.0";
             document.getElementById("maxAmount").value = "";
             document.getElementById("peerAddressFilter").value = "";
+            document.getElementById("peerAddressFilterType").value = "include";
             document.getElementById("actionFilter").value = "both";
             sortAndFilterTransactions();
         }
@@ -824,6 +871,7 @@
             document.getElementById("minAmount").addEventListener("input", sortAndFilterTransactions);
             document.getElementById("maxAmount").addEventListener("input", sortAndFilterTransactions);
             document.getElementById("peerAddressFilter").addEventListener("input", sortAndFilterTransactions);
+            document.getElementById("peerAddressFilterType").addEventListener("change", sortAndFilterTransactions);
             document.getElementById("actionFilter").addEventListener("change", sortAndFilterTransactions);
             
             // 更新排序图示
@@ -1018,7 +1066,10 @@
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-size: 0.6rem;">
                 <input type="number" id="minAmount" placeholder="最小金額" value="1" style="width: 80px; height:20px; font-size: 0.6rem;">
                 <input type="number" id="maxAmount" placeholder="最大金額" style="width: 80px; height:20px; font-size: 0.6rem;">
-                <input type="text" id="peerAddressFilter" placeholder="地址關鍵字" style="width: 16rem; height:20px; font-size: 0.8rem;">
+                <div style="display: flex; align-items: center; gap: 0.2rem;">
+                    <select id="peerAddressFilterType" style="width: 80px; padding: 0.2rem; font-size: 0.8rem;"></select>
+                    <input type="text" id="peerAddressFilter" placeholder="地址關鍵字" style="width: 13rem; height:20px; font-size: 0.8rem;">
+                </div>
                 <select id="actionFilter" style="width: 80px; padding: 0.2rem; font-size: 0.8rem;">
                     <option value="both">全部</option>
                     <option value="received">收款</option>
