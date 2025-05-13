@@ -291,8 +291,11 @@
                 title: "TRC20 USDT 交易紀錄查詢",
                 inputPlaceholder: "輸入要查詢的 TRC20 錢包地址",
                 minAmountPlaceholder: "最小金額",
+                matchedTransactionsLabel: "符合條件之交易資金",
                 totalReceived: "總收款",
+                totalReceivedLabel: "總收款",
                 totalSent: "總付款",
+                totalSentLabel: "總付款",
                 peerAddressInclude: "包含",
                 peerAddressExclude: "排除",
                 maxAmountPlaceholder: "最大金額",
@@ -341,8 +344,11 @@
                 title: "TRC20 USDT Transaction History",
                 inputPlaceholder: "Enter TRC20 wallet address",
                 minAmountPlaceholder: "Min amount",
+                matchedTransactionsLabel: "Matched transactions",
                 totalReceived: "Total Received",
+                totalReceivedLabel: "Total Received",
                 totalSent: "Total Sent",
+                totalSentLabel: "Total Sent",
                 peerAddressInclude: "Include",
                 peerAddressExclude: "Exclude",
                 maxAmountPlaceholder: "Max amount",
@@ -431,6 +437,11 @@
             document.title = t.title;
 
             document.getElementById("walletBalanceLabel").textContent = t.walletBalance;
+            document.getElementById("matchedTransactionsLabel").textContent = t.matchedTransactionsLabel;
+            document.getElementById("totalReceivedLabel").textContent = t.totalReceivedLabel;
+            document.getElementById("totalSentLabel").textContent = t.totalSentLabel;
+            
+            
             
             // 更新表单元素
             document.getElementById("addressInput").placeholder = t.inputPlaceholder;
@@ -1112,8 +1123,9 @@
                 <span id="balance" style="color: var(--primary); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span>
             </div>
             <div>
-                <span>符合條件之交易資金：總收款 </span>
-                <span id="totalReceived" style="color: var(--received-color); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span>，總付款 
+                <span id="matchedTransactionsLabel"></span>: <span id="totalReceivedLabel"></span>
+                <span id="totalReceived" style="color: var(--received-color); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span> , 
+                <span id="totalSentLabel"></span> 
                 <span id="totalSent" style="color: var(--sent-color); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span> 
             </div>
         </section>
