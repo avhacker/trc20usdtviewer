@@ -334,7 +334,8 @@
                 peerAddressHeader: "對方地址",
                 footer: " 2025 TRC20 USDT 交易紀錄查詢 | 使用 <a href=\"https://picocss.com\" target=\"_blank\">Pico.css</a> | <a href=\"mailto:avhacker@gmail.com\">avhacker@gmail.com</a>",
                 filteredTotalReceived: "過濾後總收款",
-                filteredTotalSent: "過濾後總付款"
+                filteredTotalSent: "過濾後總付款",
+                copySuccess: "已複製！"
             },
             "en": {
                 title: "TRC20 USDT Transaction History",
@@ -383,7 +384,8 @@
                 peerAddressHeader: "Peer Address",
                 footer: " 2025 TRC20 USDT Transaction Viewer | Powered by <a href=\"https://picocss.com\" target=\"_blank\">Pico.css</a> | <a href=\"mailto:avhacker@gmail.com\">avhacker@gmail.com</a>",
                 filteredTotalReceived: "Filtered Total Received",
-                filteredTotalSent: "Filtered Total Sent"
+                filteredTotalSent: "Filtered Total Sent",
+                copySuccess: "Copied!"
             }
         };
 
@@ -614,8 +616,8 @@
                 copyIcon.className = "copy-icon";
                 copyIcon.innerHTML = getCopyIconSvg();
                 copyIcon.title = translations[currentLanguage].copyTooltip;
-                copyIcon.onclick = () => {
-                    copyToClipboard(tx.transactionId, copyIcon);
+                copyIcon.onclick = (e) => {
+                    copyToClipboard(tx.transactionId, copyIcon, e);
                 };
                 transactionIdCell.appendChild(transactionLink);
                 transactionIdCell.appendChild(copyIcon);
@@ -631,8 +633,8 @@
                 valueCell.className = "amount-cell";
                 valueCell.style.cursor = "pointer";
                 valueCell.title = "點擊複製金額";
-                valueCell.onclick = function() {
-                    copyToClipboard(tx.value.toString());
+                valueCell.onclick = function(e) {
+                    copyToClipboard(tx.value.toString(), this, e);
                 };
 
                 const peerAddressCell = row.insertCell();
@@ -650,8 +652,8 @@
                 copyIcon2.className = "copy-icon";
                 copyIcon2.innerHTML = getCopyIconSvg();
                 copyIcon2.title = translations[currentLanguage].copyTooltip;
-                copyIcon2.onclick = () => {
-                    copyToClipboard(tx.peerAddress, copyIcon2);
+                copyIcon2.onclick = (e) => {
+                    copyToClipboard(tx.peerAddress, copyIcon2, e);
                 };
                 peerAddressCell.appendChild(peerAddressLink);
                 peerAddressCell.appendChild(copyIcon2);
@@ -827,8 +829,8 @@
             sortAndFilterTransactions();
         }
 
-        // 複製到剪貼板並顯示提示訊息的函數
-        function copyToClipboard(text, element) {
+        // 複製到劉貼板並顯示提示訊息的函數
+        function copyToClipboard(text, element, evt) {
             // 如果是金額數字，去除可能的千分位逗號
             if (!text.includes('/') && !text.includes(':')) {
                 text = text.replace(/,/g, '');
@@ -843,14 +845,30 @@
                 // 創建提示訊息元素
                 const tooltip = document.createElement('div');
                 tooltip.className = 'copy-tooltip';
-                tooltip.textContent = currentLanguage === "zh-TW" ? '已複製！' : 'Copied!';
+                tooltip.textContent = translations[currentLanguage].copySuccess;
                 document.body.appendChild(tooltip);
                 
-                // 計算位置 (滑鼠位置)
-                const mouseX = event.clientX;
-                const mouseY = event.clientY;
-                tooltip.style.left = `${mouseX}px`;
-                tooltip.style.top = `${mouseY - 30}px`;
+                // 計算位置 (滑鼠位置或元素位置)
+                let posX = 0;
+                let posY = 0;
+                
+                if (evt && evt.clientX) {
+                    // 如果有事件對象，使用滑鼠位置
+                    posX = evt.clientX;
+                    posY = evt.clientY - 30;
+                } else if (element) {
+                    // 如果有元素對象，使用元素位置
+                    const rect = element.getBoundingClientRect();
+                    posX = rect.left + rect.width / 2;
+                    posY = rect.top - 30;
+                } else {
+                    // 如果都沒有，使用畫面中心
+                    posX = window.innerWidth / 2;
+                    posY = window.innerHeight / 2;
+                }
+                
+                tooltip.style.left = `${posX}px`;
+                tooltip.style.top = `${posY}px`;
                 
                 // 顯示提示訊息
                 setTimeout(() => tooltip.classList.add('show'), 10);
@@ -1091,9 +1109,9 @@
         <section>
             <div>
                 <text id="walletBalanceLabel"></text>: 
-                <span id="balance" style="color: var(--primary); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent)">0</span> = 
-                <span id="totalReceived" style="color: var(--received-color); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent)">0</span> - 
-                <span id="totalSent" style="color: var(--sent-color); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent)">0</span> 
+                <span id="balance" style="color: var(--primary); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span> = 
+                <span id="totalReceived" style="color: var(--received-color); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span> - 
+                <span id="totalSent" style="color: var(--sent-color); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span> 
             </div>
         </section>
         <section style="margin-bottom: 0.2rem;">
