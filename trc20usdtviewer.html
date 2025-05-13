@@ -1109,8 +1109,11 @@
         <section>
             <div>
                 <text id="walletBalanceLabel"></text>: 
-                <span id="balance" style="color: var(--primary); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span> = 
-                <span id="totalReceived" style="color: var(--received-color); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span> - 
+                <span id="balance" style="color: var(--primary); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span>
+            </div>
+            <div>
+                <span>符合條件之交易資金：總收款 </span>
+                <span id="totalReceived" style="color: var(--received-color); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span>，總付款 
                 <span id="totalSent" style="color: var(--sent-color); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span> 
             </div>
         </section>
