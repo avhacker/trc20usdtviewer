@@ -11,6 +11,8 @@
         :root {
             --primary: #1095c1;
             --primary-hover: #0d7ea5;
+            --received-color: #2ecc71;
+            --sent-color: #e74c3c;
         }
         
         /* 自定義樣式 */
@@ -201,12 +203,12 @@
         }
         
         .action-received {
-            color: #2ecc71;
+            color: var(--received-color);
             font-weight: bold;
         }
         
         .action-sent {
-            color: #e74c3c;
+            color: var(--sent-color);
             font-weight: bold;
         }
         
@@ -289,7 +291,6 @@
                 title: "TRC20 USDT 交易紀錄查詢",
                 inputPlaceholder: "輸入要查詢的 TRC20 錢包地址",
                 minAmountPlaceholder: "最小金額",
-                totalStats: "交易統計",
                 totalReceived: "總收款",
                 totalSent: "總付款",
                 peerAddressInclude: "包含",
@@ -339,7 +340,6 @@
                 title: "TRC20 USDT Transaction History",
                 inputPlaceholder: "Enter TRC20 wallet address",
                 minAmountPlaceholder: "Min amount",
-                totalStats: "Transaction Statistics",
                 totalReceived: "Total Received",
                 totalSent: "Total Sent",
                 peerAddressInclude: "Include",
@@ -429,11 +429,6 @@
             document.title = t.title;
 
             document.getElementById("walletBalanceLabel").textContent = t.walletBalance;
-            
-            // 更新統計數據標籤
-            document.getElementById("totalStatsLabel").textContent = t.totalStats;
-            document.getElementById("totalReceivedLabel").textContent = t.totalReceived;
-            document.getElementById("totalSentLabel").textContent = t.totalSent;
             
             // 更新表单元素
             document.getElementById("addressInput").placeholder = t.inputPlaceholder;
@@ -634,6 +629,11 @@
                 const valueCell = row.insertCell();
                 valueCell.textContent = tx.value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 6 });
                 valueCell.className = "amount-cell";
+                valueCell.style.cursor = "pointer";
+                valueCell.title = "點擊複製金額";
+                valueCell.onclick = function() {
+                    copyToClipboard(tx.value.toString());
+                };
 
                 const peerAddressCell = row.insertCell();
                 peerAddressCell.className = "address-cell";
@@ -829,20 +829,28 @@
 
         // 複製到剪貼板並顯示提示訊息的函數
         function copyToClipboard(text, element) {
+            // 如果是金額數字，去除可能的千分位逗號
+            if (!text.includes('/') && !text.includes(':')) {
+                text = text.replace(/,/g, '');
+            }
+            
+            // 移除單位 (如 USDT)
+            if (text.includes('USDT')) {
+                text = text.replace(' USDT', '');
+            }
+            
             navigator.clipboard.writeText(text).then(() => {
-                // 顯示勾選圖標
-                element.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
-                
                 // 創建提示訊息元素
                 const tooltip = document.createElement('div');
                 tooltip.className = 'copy-tooltip';
                 tooltip.textContent = currentLanguage === "zh-TW" ? '已複製！' : 'Copied!';
                 document.body.appendChild(tooltip);
                 
-                // 計算位置 (滑鼠位置或元素位置)
-                const rect = element.getBoundingClientRect();
-                tooltip.style.left = `${rect.left}px`;
-                tooltip.style.top = `${rect.top - 30}px`;
+                // 計算位置 (滑鼠位置)
+                const mouseX = event.clientX;
+                const mouseY = event.clientY;
+                tooltip.style.left = `${mouseX}px`;
+                tooltip.style.top = `${mouseY - 30}px`;
                 
                 // 顯示提示訊息
                 setTimeout(() => tooltip.classList.add('show'), 10);
@@ -852,8 +860,6 @@
                     tooltip.classList.remove('show');
                     setTimeout(() => {
                         document.body.removeChild(tooltip);
-                        // 恢復原始複製圖標
-                        element.innerHTML = getCopyIconSvg();
                     }, 300);
                 }, 2000);
             });
@@ -872,6 +878,8 @@
             
             // 初始化時間標頭為本地時間
             updateTimeHeader();
+            
+            // 不再需要初始化金額複製圖標，因為已移除
             
             loadURLParams(); // 加载 URL 参数
             const urlParams = new URLSearchParams(window.location.search);
@@ -1082,12 +1090,10 @@
         </section>
         <section>
             <div>
-                <text id="walletBalanceLabel"></text>: <span id="balance"></span>
-            </div>
-            <div>
-                <text id="totalStatsLabel">交易統計</text>: 
-                <span id="totalReceivedLabel">總收款</span>: <span id="totalReceived">0</span> USDT | 
-                <span id="totalSentLabel">總付款</span>: <span id="totalSent">0</span> USDT
+                <text id="walletBalanceLabel"></text>: 
+                <span id="balance" style="color: var(--primary); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent)">0</span> = 
+                <span id="totalReceived" style="color: var(--received-color); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent)">0</span> - 
+                <span id="totalSent" style="color: var(--sent-color); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent)">0</span> 
             </div>
         </section>
         <section style="margin-bottom: 0.2rem;">
