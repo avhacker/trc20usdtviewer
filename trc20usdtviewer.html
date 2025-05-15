@@ -184,6 +184,31 @@
             fill: #2ecc71;
         }
         
+        /* 時間過濾器錯誤樣式 */
+        .time-filter-error {
+            border: 1px solid #e74c3c;
+            background-color: rgba(231, 76, 60, 0.1);
+        }
+        
+        /* 時間過濾器提示訊息樣式 */
+        .time-filter-tooltip {
+            position: absolute;
+            background-color: #e74c3c;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.2rem;
+            font-size: 0.7rem;
+            z-index: 100;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .time-filter-tooltip.show {
+            opacity: 1;
+        }
+        
         /* 複製提示訊息樣式 */
         .copy-tooltip {
             position: fixed;
@@ -632,22 +657,18 @@
             let startTime = null;
             let endTime = null;
             
-            // 如果有輸入時間，嘗試解析
+            // 使用新的時間解析函數
             if (startTimeStr) {
-                try {
-                    startTime = new Date(startTimeStr.replace(' ', 'T')).getTime();
-                    if (isNaN(startTime)) startTime = null;
-                } catch (e) {
-                    console.error("Invalid start time format:", e);
+                const startResult = parseTimeInput(startTimeStr);
+                if (startResult.valid) {
+                    startTime = startResult.date.getTime();
                 }
             }
             
             if (endTimeStr) {
-                try {
-                    endTime = new Date(endTimeStr.replace(' ', 'T')).getTime();
-                    if (isNaN(endTime)) endTime = null;
-                } catch (e) {
-                    console.error("Invalid end time format:", e);
+                const endResult = parseTimeInput(endTimeStr);
+                if (endResult.valid) {
+                    endTime = endResult.date.getTime();
                 }
             }
 
@@ -1023,6 +1044,93 @@
             </svg>`;
         }
 
+        // 格式化日期為標準格式
+        function formatDateToStandard(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        }
+        
+        // 驗證時間字符串並嘗試解析為 Date 對象
+        function parseTimeInput(timeStr) {
+            if (!timeStr) return { valid: false, date: null, message: "請輸入時間" };
+            
+            // 嘗試解析各種格式
+            let date;
+            
+            // 先嘗試直接解析
+            date = new Date(timeStr.replace(' ', 'T'));
+            if (!isNaN(date.getTime())) {
+                return { valid: true, date: date, message: "" };
+            }
+            
+            // 嘗試解析更寬鬆的格式
+            // 匹配格式：YYYY-M-D 或 YYYY/M/D 或 YYYY.M.D
+            const dateRegex = /^(\d{4})[\-\/\.](\d{1,2})[\-\/\.](\d{1,2})(?:[\sT](\d{1,2})(?::(\d{1,2})(?::(\d{1,2}))?)?)?$/;
+            const match = timeStr.match(dateRegex);
+            
+            if (match) {
+                const year = parseInt(match[1]);
+                const month = parseInt(match[2]) - 1; // 月份需要減 1
+                const day = parseInt(match[3]);
+                const hours = match[4] ? parseInt(match[4]) : 0;
+                const minutes = match[5] ? parseInt(match[5]) : 0;
+                const seconds = match[6] ? parseInt(match[6]) : 0;
+                
+                // 驗證值的範圍
+                if (month < 0 || month > 11) return { valid: false, date: null, message: "月份必須在 1-12 之間" };
+                if (day < 1 || day > 31) return { valid: false, date: null, message: "日期必須在 1-31 之間" };
+                if (hours < 0 || hours > 23) return { valid: false, date: null, message: "小時必須在 0-23 之間" };
+                if (minutes < 0 || minutes > 59) return { valid: false, date: null, message: "分鐘必須在 0-59 之間" };
+                if (seconds < 0 || seconds > 59) return { valid: false, date: null, message: "秒數必須在 0-59 之間" };
+                
+                date = new Date(year, month, day, hours, minutes, seconds);
+                
+                // 驗證日期是否有效
+                if (isNaN(date.getTime())) {
+                    return { valid: false, date: null, message: "無效的日期" };
+                }
+                
+                // 驗證月份和日期是否匹配
+                // 例如，2月不能有 30 或 31 日
+                if (date.getMonth() !== month || date.getDate() !== day) {
+                    return { valid: false, date: null, message: "無效的日期組合" };
+                }
+                
+                return { valid: true, date: date, message: "" };
+            }
+            
+            return { valid: false, date: null, message: "無效的時間格式" };
+        }
+        
+        // 顯示時間過濾器的錯誤提示
+        function showTimeFilterError(inputId, tooltipId, message) {
+            const input = document.getElementById(inputId);
+            const tooltip = document.getElementById(tooltipId);
+            
+            if (message) {
+                input.classList.add("time-filter-error");
+                tooltip.textContent = message;
+                tooltip.classList.add("show");
+                
+                // 定位提示框
+                tooltip.style.top = (input.offsetHeight + 5) + "px";
+                tooltip.style.left = "0";
+                
+                // 3 秒後自動隱藏提示
+                setTimeout(() => {
+                    tooltip.classList.remove("show");
+                }, 3000);
+            } else {
+                input.classList.remove("time-filter-error");
+                tooltip.classList.remove("show");
+            }
+        }
+        
         // 設置時間過濾器的預設值
         function setDefaultTimeFilters() {
             // 將開始時間設為 2010/1/1 0:0
@@ -1030,19 +1138,8 @@
             // 將結束時間設為當前時間
             const endDate = new Date();
             
-            // 將日期轉換為文本格式 (YYYY-MM-DD HH:MM:SS)
-            const formatDateForInput = (date) => {
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                const hours = String(date.getHours()).padStart(2, '0');
-                const minutes = String(date.getMinutes()).padStart(2, '0');
-                const seconds = String(date.getSeconds()).padStart(2, '0');
-                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-            };
-            
-            document.getElementById("startTimeFilter").value = formatDateForInput(startDate);
-            document.getElementById("endTimeFilter").value = formatDateForInput(endDate);
+            document.getElementById("startTimeFilter").value = formatDateToStandard(startDate);
+            document.getElementById("endTimeFilter").value = formatDateToStandard(endDate);
         }
         
         window.onload = () => {
@@ -1100,9 +1197,73 @@
             document.getElementById("peerAddressFilterType").addEventListener("change", sortAndFilterTransactions);
             document.getElementById("actionFilter").addEventListener("change", sortAndFilterTransactions);
             
-            // 绑定時間過濾器的事件監聽器
-            document.getElementById("startTimeFilter").addEventListener("change", sortAndFilterTransactions);
-            document.getElementById("endTimeFilter").addEventListener("change", sortAndFilterTransactions);
+            // 绑定時間過濾器的事件監聽器，使用 input 事件即時驗證和應用過濾條件
+            document.getElementById("startTimeFilter").addEventListener("input", function(e) {
+                const timeStr = e.target.value;
+                if (timeStr) {
+                    // 嘗試解析時間
+                    const result = parseTimeInput(timeStr);
+                    if (result.valid) {
+                        // 時間格式有效，移除錯誤樣式
+                        showTimeFilterError("startTimeFilter", "startTimeTooltip", "");
+                        // 立即應用過濾條件
+                        sortAndFilterTransactions();
+                    } else {
+                        // 時間格式無效，顯示錯誤提示
+                        showTimeFilterError("startTimeFilter", "startTimeTooltip", result.message);
+                    }
+                } else {
+                    // 如果清空了輸入框，移除錯誤樣式並應用過濾條件
+                    showTimeFilterError("startTimeFilter", "startTimeTooltip", "");
+                    sortAndFilterTransactions();
+                }
+            });
+            
+            document.getElementById("endTimeFilter").addEventListener("input", function(e) {
+                const timeStr = e.target.value;
+                if (timeStr) {
+                    // 嘗試解析時間
+                    const result = parseTimeInput(timeStr);
+                    if (result.valid) {
+                        // 時間格式有效，移除錯誤樣式
+                        showTimeFilterError("endTimeFilter", "endTimeTooltip", "");
+                        // 立即應用過濾條件
+                        sortAndFilterTransactions();
+                    } else {
+                        // 時間格式無效，顯示錯誤提示
+                        showTimeFilterError("endTimeFilter", "endTimeTooltip", result.message);
+                    }
+                } else {
+                    // 如果清空了輸入框，移除錯誤樣式並應用過濾條件
+                    showTimeFilterError("endTimeFilter", "endTimeTooltip", "");
+                    sortAndFilterTransactions();
+                }
+            });
+            
+            // 在失去焦點時格式化時間輸入
+            document.getElementById("startTimeFilter").addEventListener("blur", function(e) {
+                const timeStr = e.target.value;
+                if (timeStr) {
+                    const result = parseTimeInput(timeStr);
+                    if (result.valid) {
+                        // 將時間格式化為標準格式
+                        e.target.value = formatDateToStandard(result.date);
+                        sortAndFilterTransactions();
+                    }
+                }
+            });
+            
+            document.getElementById("endTimeFilter").addEventListener("blur", function(e) {
+                const timeStr = e.target.value;
+                if (timeStr) {
+                    const result = parseTimeInput(timeStr);
+                    if (result.valid) {
+                        // 將時間格式化為標準格式
+                        e.target.value = formatDateToStandard(result.date);
+                        sortAndFilterTransactions();
+                    }
+                }
+            });
             
             // 更新排序图示
             updateSortIcons();
@@ -1329,10 +1490,16 @@
                         <option value="sent">付款</option>
                     </select>
                     <!-- 時間過濾器 (使用文本輸入確保 24 小時制) -->
-                    <div style="display: flex; align-items: center; gap: 0.2rem;">
-                        <input type="text" id="startTimeFilter" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 6.5rem; height:20px; font-size: 0.6rem; padding-left: 0; padding-right: 0;">
+                    <div style="display: flex; align-items: center; gap: 0.2rem; position: relative;">
+                        <div style="position: relative;">
+                            <input type="text" id="startTimeFilter" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 6.5rem; height:20px; font-size: 0.6rem; padding-left: 0; padding-right: 0;">
+                            <div id="startTimeTooltip" class="time-filter-tooltip"></div>
+                        </div>
                         <span style="font-size: 0.8rem;">~</span>   
-                        <input type="text" id="endTimeFilter" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 6.5rem; height:20px; font-size: 0.6rem; padding-left: 0; padding-right: 0;">
+                        <div style="position: relative;">
+                            <input type="text" id="endTimeFilter" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 6.5rem; height:20px; font-size: 0.6rem; padding-left: 0; padding-right: 0;">
+                            <div id="endTimeTooltip" class="time-filter-tooltip"></div>
+                        </div>
                     </div>
                     <button id="clearFiltersButton" class="secondary outline" style="width: 6rem; height: 20px; line-height: 0; padding: 0; font-size: 0.8rem; margin: 0;">清除</button>
                 </div>
