@@ -1001,6 +1001,14 @@
                 fetchAndDisplayTransactions(address); // 开始加载数据
             }
 
+            // 設置查詢按鈕的點擊事件
+            document.getElementById("queryButton").onclick = function() {
+                // 在提交表單前，將當前語系設定到隱藏的語言輸入欄位
+                document.getElementById("langInput").value = currentLanguage;
+                // 提交表單
+                document.getElementById("queryForm").submit();
+            };
+            
             document.getElementById("controlButton").onclick = togglePause;
             document.getElementById("clearFiltersButton").onclick = clearFilters;
             document.getElementById("languageToggle").onclick = toggleLanguage; // 添加語言切換按鈕的點擊事件
@@ -1192,14 +1200,16 @@
 <body>
     <main class="container">
         <section style="margin-bottom: 0.2rem;">
-            <form action="" method="GET">
+            <form id="queryForm" action="" method="GET">
                 <div class="grid">
                     <div>
                         <label for="addressInput" style="display: flex; align-items: center;">
                             <input type="text" id="addressInput" name="address" placeholder="輸入 TRC20 錢包地址" required style="width: 24rem;">
-                            <button id="queryButton" type="submit" style="width: 4rem;font-size: inherit; padding: 0.1rem 0.2rem; margin: 0 0.4rem;">查詢</button>
+                            <button id="queryButton" type="button" style="width: 4rem;font-size: inherit; padding: 0.1rem 0.2rem; margin: 0 0.4rem;">查詢</button>
                             <button id="controlButton" type="button" class="contrast" style="width: 4rem;padding: 0.2rem 0.2rem; font-size: 0.8rem; margin: 0 0.4rem;white-space: nowrap; background-color: var(--primary);">暫停載入</button>
                             <button id="languageToggle" type="button" class="secondary" style="width: 4rem;padding: 0.2rem 0.2rem; font-size: 0.8rem; margin: 0 0.4rem;">EN/中</button>
+                            <!-- 添加一個隱藏的語言輸入欄位，用於保存當前語系 -->
+                            <input type="hidden" id="langInput" name="lang" value="">
                         </label>
                     </div>
                 </div>
