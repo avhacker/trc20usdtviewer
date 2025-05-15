@@ -997,9 +997,6 @@
                     document.getElementById('usdtBalance').textContent = "N/A";
                     document.getElementById('trxBalance').textContent = "N/A";
                 });
-                // 設置控制按鈕的初始文字
-                const controlButton = document.getElementById("controlButton");
-                controlButton.textContent = translations[currentLanguage].pause;
                 
                 fetchAndDisplayTransactions(address); // 开始加载数据
             }
