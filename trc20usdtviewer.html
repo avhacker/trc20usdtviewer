@@ -329,6 +329,8 @@
                 ageMinute: "{0}分{1}秒",
                 ageSecond: "{0}秒",
                 ageSuffix: "之前",
+                startTime: "開始時間",
+                endTime: "結束時間",
                 transactionId: "交易 ID",
                 action: "類型",
                 amount: "金額",
@@ -382,6 +384,8 @@
                 ageMinute: "{0}m {1}s",
                 ageSecond: "{0}s",
                 ageSuffix: " ago",
+                startTime: "Start Time",
+                endTime: "End Time",
                 transactionId: "Transaction ID",
                 action: "Type",
                 amount: "Amount",
@@ -557,6 +561,8 @@
             const peerAddressFilter = document.getElementById("peerAddressFilter").value;
             const peerAddressFilterType = document.getElementById("peerAddressFilterType").value;
             const actionFilter = document.getElementById("actionFilter").value;
+            const startTimeFilter = document.getElementById("startTimeFilter").value;
+            const endTimeFilter = document.getElementById("endTimeFilter").value;
 
             urlParams.set("min", minAmount);
             if (maxAmount) urlParams.set("max", maxAmount); else urlParams.delete("max");
@@ -568,6 +574,10 @@
                 urlParams.delete("peerType");
             }
             if (actionFilter) urlParams.set("action", actionFilter);
+            
+            // 保存時間過濾器的值到 URL 參數
+            if (startTimeFilter) urlParams.set("startTime", startTimeFilter); else urlParams.delete("startTime");
+            if (endTimeFilter) urlParams.set("endTime", endTimeFilter); else urlParams.delete("endTime");
 
             if (sortField) urlParams.set("sortField", sortField);
             if (sortOrder) urlParams.set("sortOrder", sortOrder);
@@ -583,6 +593,10 @@
             document.getElementById("peerAddressFilter").value = urlParams.get("peer") || "";
             document.getElementById("peerAddressFilterType").value = urlParams.get("peerType") || "include";
             document.getElementById("actionFilter").value = urlParams.get("action") || "both";
+            
+            // 從 URL 載入時間過濾器的參數
+            document.getElementById("startTimeFilter").value = urlParams.get("startTime") || "";
+            document.getElementById("endTimeFilter").value = urlParams.get("endTime") || "";
 
             sortField = urlParams.get("sortField") || null;
             sortOrder = urlParams.get("sortOrder") || null;
@@ -609,6 +623,33 @@
             const peerAddressFilter = document.getElementById("peerAddressFilter").value.toLowerCase() || null;
             const peerAddressFilterType = document.getElementById("peerAddressFilterType").value;
             const actionFilter = document.getElementById("actionFilter").value || "both";
+            
+            // 取得時間過濾器的值
+            const startTimeStr = document.getElementById("startTimeFilter").value;
+            const endTimeStr = document.getElementById("endTimeFilter").value;
+            
+            // 將時間字符串轉換為時間戳
+            let startTime = null;
+            let endTime = null;
+            
+            // 如果有輸入時間，嘗試解析
+            if (startTimeStr) {
+                try {
+                    startTime = new Date(startTimeStr.replace(' ', 'T')).getTime();
+                    if (isNaN(startTime)) startTime = null;
+                } catch (e) {
+                    console.error("Invalid start time format:", e);
+                }
+            }
+            
+            if (endTimeStr) {
+                try {
+                    endTime = new Date(endTimeStr.replace(' ', 'T')).getTime();
+                    if (isNaN(endTime)) endTime = null;
+                } catch (e) {
+                    console.error("Invalid end time format:", e);
+                }
+            }
 
             let filteredTransactions = allTransactions.filter(tx => {
                 // 根據用戶選擇的過濾類型（包含/排除）來判斷地址是否符合條件
@@ -622,11 +663,21 @@
                     }
                 }
                 
+                // 時間過濾判斷
+                let isTimeValid = true;
+                if (startTime) {
+                    isTimeValid = isTimeValid && tx.timestamp >= startTime;
+                }
+                if (endTime) {
+                    isTimeValid = isTimeValid && tx.timestamp <= endTime;
+                }
+                
                 const isActionValid = actionFilter === "both" || tx.action === actionFilter;
                 return (!minAmount || tx.value >= minAmount) &&
                     (!maxAmount || tx.value <= maxAmount) &&
                     isPeerAddressValid &&
-                    isActionValid;
+                    isActionValid &&
+                    isTimeValid;
             });
 
             // 計算過濾後的總收款量和總付款量
@@ -904,6 +955,10 @@
             document.getElementById("peerAddressFilter").value = "";
             document.getElementById("peerAddressFilterType").value = "include";
             document.getElementById("actionFilter").value = "both";
+            
+            // 重置時間過濾器
+            setDefaultTimeFilters();
+            
             sortAndFilterTransactions();
         }
 
@@ -968,6 +1023,28 @@
             </svg>`;
         }
 
+        // 設置時間過濾器的預設值
+        function setDefaultTimeFilters() {
+            // 將開始時間設為 2010/1/1 0:0
+            const startDate = new Date(2010, 0, 1, 0, 0);
+            // 將結束時間設為當前時間
+            const endDate = new Date();
+            
+            // 將日期轉換為文本格式 (YYYY-MM-DD HH:MM:SS)
+            const formatDateForInput = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            };
+            
+            document.getElementById("startTimeFilter").value = formatDateForInput(startDate);
+            document.getElementById("endTimeFilter").value = formatDateForInput(endDate);
+        }
+        
         window.onload = () => {
             // 首先检测语言并应用翻译
             detectLanguage();
@@ -976,6 +1053,9 @@
             updateTimeHeader();
             
             // 不再需要初始化金額複製圖標，因為已移除
+            
+            // 設置時間過濾器的預設值
+            setDefaultTimeFilters();
             
             loadURLParams(); // 加载 URL 参数
             const urlParams = new URLSearchParams(window.location.search);
@@ -1020,8 +1100,13 @@
             document.getElementById("peerAddressFilterType").addEventListener("change", sortAndFilterTransactions);
             document.getElementById("actionFilter").addEventListener("change", sortAndFilterTransactions);
             
+            // 绑定時間過濾器的事件監聽器
+            document.getElementById("startTimeFilter").addEventListener("change", sortAndFilterTransactions);
+            document.getElementById("endTimeFilter").addEventListener("change", sortAndFilterTransactions);
+            
             // 更新排序图示
             updateSortIcons();
+            setDefaultTimeFilters();
         };
         
         // 切换语言
@@ -1230,18 +1315,27 @@
         </section>
         <section style="margin-bottom: 0.2rem;">
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-size: 0.6rem;">
-                <input type="number" id="minAmount" placeholder="最小金額" value="1" style="width: 80px; height:20px; font-size: 0.6rem;">
-                <input type="number" id="maxAmount" placeholder="最大金額" style="width: 80px; height:20px; font-size: 0.6rem;">
-                <div style="display: flex; align-items: center; gap: 0.2rem;">
-                    <select id="peerAddressFilterType" style="width: 80px; padding: 0.2rem; font-size: 0.8rem;"></select>
-                    <input type="text" id="peerAddressFilter" placeholder="地址關鍵字" style="width: 13rem; height:20px; font-size: 0.8rem;">
+                <!-- 將所有過濾元件包裝在一個容器中，使用相同的垂直對齊方式 -->
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="number" id="minAmount" placeholder="最小金額" value="1" style="width: 80px; height:20px; font-size: 0.6rem;">
+                    <input type="number" id="maxAmount" placeholder="最大金額" style="width: 80px; height:20px; font-size: 0.6rem;">
+                    <div style="display: flex; align-items: center; gap: 0.2rem;">
+                        <select id="peerAddressFilterType" style="width: 80px; padding: 0; height: 1.5rem; font-size: 0.8rem;"></select>
+                        <input type="text" id="peerAddressFilter" placeholder="地址關鍵字" style="width: 13rem; height:1.5rem; font-size: 0.8rem;">
+                    </div>
+                    <select id="actionFilter" style="width: 80px; padding: 0; height: 1.5rem; font-size: 0.8rem;">
+                        <option value="both">全部</option>
+                        <option value="received">收款</option>
+                        <option value="sent">付款</option>
+                    </select>
+                    <!-- 時間過濾器 (使用文本輸入確保 24 小時制) -->
+                    <div style="display: flex; align-items: center; gap: 0.2rem;">
+                        <input type="text" id="startTimeFilter" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 6.5rem; height:20px; font-size: 0.6rem; padding-left: 0; padding-right: 0;">
+                        <span style="font-size: 0.8rem;">~</span>   
+                        <input type="text" id="endTimeFilter" placeholder="YYYY-MM-DD HH:MM:SS" style="width: 6.5rem; height:20px; font-size: 0.6rem; padding-left: 0; padding-right: 0;">
+                    </div>
+                    <button id="clearFiltersButton" class="secondary outline" style="width: 6rem; height: 20px; line-height: 0; padding: 0; font-size: 0.8rem; margin: 0;">清除</button>
                 </div>
-                <select id="actionFilter" style="width: 80px; padding: 0.2rem; font-size: 0.8rem;">
-                    <option value="both">全部</option>
-                    <option value="received">收款</option>
-                    <option value="sent">付款</option>
-                </select>
-                <button id="clearFiltersButton" class="secondary outline" style="width: 6rem; height: 36px; padding: 0 0.5rem; font-size: 0.8rem; margin: 0;">清除</button>
                 <div style="display: flex; flex-direction: column;">
                     <div id="status" style="font-size: 0.8rem;">等待查詢...</div>
                     <div id="resultCount" style="white-space: nowrap;"></div>
