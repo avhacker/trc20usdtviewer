@@ -997,6 +997,10 @@
                     document.getElementById('usdtBalance').textContent = "N/A";
                     document.getElementById('trxBalance').textContent = "N/A";
                 });
+                // 設置控制按鈕的初始文字
+                const controlButton = document.getElementById("controlButton");
+                controlButton.textContent = translations[currentLanguage].pause;
+                
                 fetchAndDisplayTransactions(address); // 开始加载数据
             }
 
@@ -1026,6 +1030,18 @@
             
             // 应用翻译
             applyTranslations();
+            
+            // 更新控制按鈕的文字
+            const controlButton = document.getElementById("controlButton");
+            if (!controlButton.disabled) {
+                if (isPaused) {
+                    controlButton.textContent = translations[currentLanguage].continue;
+                } else {
+                    controlButton.textContent = translations[currentLanguage].pause;
+                }
+            } else {
+                controlButton.textContent = translations[currentLanguage].loadComplete;
+            }
             
             // 更新所有圖標的提示文字
             document.querySelectorAll('.copy-icon').forEach(icon => {
