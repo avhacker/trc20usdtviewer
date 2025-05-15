@@ -441,7 +441,8 @@
             document.getElementById("totalReceivedLabel").textContent = t.totalReceivedLabel;
             document.getElementById("totalSentLabel").textContent = t.totalSentLabel;
             
-            
+            // 更新清除過濾按鈕
+            document.getElementById("clearFiltersButton").textContent = t.clear;
             
             // 更新表单元素
             document.getElementById("addressInput").placeholder = t.inputPlaceholder;
@@ -472,6 +473,63 @@
                 
                 // 恢復之前的選擇
                 peerAddressFilterTypeSelect.value = urlParams.get("peerType") || "include";
+            }
+            
+            // 更新交易類型過濾選項
+            const actionFilterSelect = document.getElementById("actionFilter");
+            if (actionFilterSelect) {
+                // 清空現有選項
+                actionFilterSelect.innerHTML = '';
+                
+                // 重新創建選項，確保文字來自翻譯
+                const allOption = document.createElement('option');
+                allOption.value = 'both';
+                allOption.textContent = t.typeAll;
+                
+                const receivedOption = document.createElement('option');
+                receivedOption.value = 'received';
+                receivedOption.textContent = t.typeReceived;
+                
+                const sentOption = document.createElement('option');
+                sentOption.value = 'sent';
+                sentOption.textContent = t.typeSent;
+                
+                actionFilterSelect.appendChild(allOption);
+                actionFilterSelect.appendChild(receivedOption);
+                actionFilterSelect.appendChild(sentOption);
+                
+                // 恢復之前的選擇
+                actionFilterSelect.value = urlParams.get("action") || "both";
+            }
+            
+            // 更新表格標題欄位
+            const tableHeaders = document.querySelectorAll("table thead th");
+            if (tableHeaders.length > 0) {
+                // 交易 ID
+                if (tableHeaders[1]) {
+                    tableHeaders[1].textContent = t.transactionId;
+                }
+                
+                // 類型
+                if (tableHeaders[2]) {
+                    const actionTextSpan = tableHeaders[2].querySelector(".text-content");
+                    if (actionTextSpan) {
+                        actionTextSpan.textContent = t.action;
+                    }
+                }
+                
+                // 金額
+                if (tableHeaders[3]) {
+                    const valueTextSpan = tableHeaders[3].querySelector(".text-content");
+                    if (valueTextSpan) {
+                        valueTextSpan.textContent = t.amount;
+                    }
+                }
+                
+                // 對方地址
+                if (tableHeaders[4]) {
+                    tableHeaders[4].textContent = t.peerAddressHeader;
+                }
             }
             
             // 更新下拉选单选项
