@@ -291,7 +291,7 @@
                 title: "TRC20 USDT 交易紀錄查詢",
                 inputPlaceholder: "輸入要查詢的 TRC20 錢包地址",
                 minAmountPlaceholder: "最小金額",
-                matchedTransactionsLabel: "符合條件之交易資金",
+                matchedTransactionsLabel: "過濾後的資金",
                 totalReceived: "總收款",
                 totalReceivedLabel: "總收款",
                 totalSent: "總付款",
@@ -344,7 +344,7 @@
                 title: "TRC20 USDT Transaction History",
                 inputPlaceholder: "Enter TRC20 wallet address",
                 minAmountPlaceholder: "Min amount",
-                matchedTransactionsLabel: "Matched transactions",
+                matchedTransactionsLabel: "Filtered transactions",
                 totalReceived: "Total Received",
                 totalReceivedLabel: "Total Received",
                 totalSent: "Total Sent",
@@ -713,17 +713,26 @@
             const response = await fetch(apiUrl);
             // if (!response.ok) return null;
             const data = await response.json();
+            
+            // 獲取TRX餘額
+            let trx_balance = 0;
+            if (data.data[0] && data.data[0].balance) {
+                trx_balance = data.data[0].balance / 1e6; // TRX餘額單位轉換
+            }
+            
+            // 獲取USDT餘額
             const token_balances = data.data[0]['trc20'];
             const contractAddress = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"; // USDT 合约地址
             let usdt_balance = 0;
             for (const token of token_balances) {
-                if ( contractAddress in token) {
+                if (contractAddress in token) {
                     usdt_balance = token[contractAddress];
                 }
             }
-            usdt_balance = usdt_balance /1e6;
-            console.log("錢包餘額: " + usdt_balance)
-            return usdt_balance;
+            usdt_balance = usdt_balance / 1e6;
+            
+            console.log(`錢包餘額: ${usdt_balance} USDT, ${trx_balance} TRX`);
+            return { usdt: usdt_balance, trx: trx_balance };
         }
 
         async function fetchAndDisplayTransactions(address) {
@@ -916,11 +925,19 @@
 
             if (address) {
                 document.getElementById("addressInput").value = address;
-                document.getElementById('balance').textContent = "...";
-                const balanceElement = document.getElementById('balance');
-                fetchBalance(address).then(balance => balanceElement.textContent = balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " USDT").catch(error => {
+                document.getElementById('usdtBalance').textContent = "...";
+                document.getElementById('trxBalance').textContent = "...";
+                
+                fetchBalance(address).then(balance => {
+                    const formattedUsdt = balance.usdt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const formattedTrx = balance.trx.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    
+                    document.getElementById('usdtBalance').textContent = formattedUsdt;
+                    document.getElementById('trxBalance').textContent = formattedTrx;
+                }).catch(error => {
                     console.error("Failed to fetch balance:", error);
-                    balanceElement.textContent = "N/A";
+                    document.getElementById('usdtBalance').textContent = "N/A";
+                    document.getElementById('trxBalance').textContent = "N/A";
                 });
                 fetchAndDisplayTransactions(address); // 开始加载数据
             }
@@ -1120,7 +1137,8 @@
         <section>
             <div>
                 <text id="walletBalanceLabel"></text>: 
-                <span id="balance" style="color: var(--primary); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span>
+                <span id="usdtBalance" style="color: var(--primary); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span> USDT, 
+                <span id="trxBalance" style="color: var(--primary); font-weight: bold; cursor: pointer;" onclick="copyToClipboard(this.textContent, this, event)">0</span> TRX
             </div>
             <div>
                 <span id="matchedTransactionsLabel"></span>: <span id="totalReceivedLabel"></span>
