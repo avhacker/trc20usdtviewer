@@ -1131,6 +1131,222 @@
             }
         }
         
+        // 智能時間輸入處理
+        function handleTimeInput(e) {
+            const input = e.target;
+            const cursorPos = input.selectionStart;
+            let value = input.value;
+            const oldLength = value.length;
+            
+            // 只允許數字輸入，自動添加分隔符
+            const cleanValue = value.replace(/[^0-9]/g, '');
+            
+            // 如果用戶嘗試刪除分隔符，我們需要重新格式化
+            if (cleanValue.length !== value.replace(/[-:\s]/g, '').length) {
+                // 用戶嘗試刪除分隔符，我們需要重新格式化
+                formatTimeInput(input, cleanValue);
+                return;
+            }
+            
+            // 根據輸入的數字長度自動添加分隔符
+            let formattedValue = '';
+            let newCursorPos = cursorPos;
+            
+            // 判斷是否正在輸入新字符
+            const isAddingDigit = value.length > oldLength || (e.inputType && e.inputType.includes('insert'));
+            
+            // 年份 (YYYY)
+            if (cleanValue.length >= 4) {
+                formattedValue += cleanValue.substring(0, 4);
+                
+                // 如果已經輸入了 4 位年份，且正在繼續輸入，自動跳到月份
+                if (cleanValue.length >= 4 && cursorPos >= 4 && isAddingDigit) {
+                    formattedValue += '-';
+                    // 如果正在輸入第 5 個數字，將光標移到月份位置
+                    if (cursorPos === 4) {
+                        newCursorPos = 5; // 年份後的分隔符位置
+                    }
+                }
+            } else {
+                formattedValue += cleanValue;
+            }
+            
+            // 月份 (MM)
+            if (cleanValue.length > 4) {
+                if (formattedValue.length === 4) {
+                    formattedValue += '-';
+                }
+                
+                const monthDigits = Math.min(2, cleanValue.length - 4);
+                formattedValue += cleanValue.substring(4, 4 + monthDigits);
+                
+                // 如果已經輸入了 2 位月份，且正在繼續輸入，自動跳到日期
+                if (monthDigits === 2 && cursorPos >= 7 && isAddingDigit) {
+                    formattedValue += '-';
+                    // 如果正在輸入第 7 個數字，將光標移到日期位置
+                    if (cursorPos === 7) {
+                        newCursorPos = 8; // 月份後的分隔符位置
+                    }
+                }
+            }
+            
+            // 日期 (DD)
+            if (cleanValue.length > 6) {
+                if (formattedValue.length === 7) { // YYYY-MM
+                    formattedValue += '-';
+                }
+                
+                const dayDigits = Math.min(2, cleanValue.length - 6);
+                formattedValue += cleanValue.substring(6, 6 + dayDigits);
+                
+                // 如果已經輸入了 2 位日期，且正在繼續輸入，自動跳到小時
+                if (dayDigits === 2 && cursorPos >= 10 && isAddingDigit) {
+                    formattedValue += ' ';
+                    // 如果正在輸入第 9 個數字，將光標移到小時位置
+                    if (cursorPos === 10) {
+                        newCursorPos = 11; // 日期後的空格位置
+                    }
+                }
+            }
+            
+            // 小時 (HH)
+            if (cleanValue.length > 8) {
+                if (formattedValue.length === 10) { // YYYY-MM-DD
+                    formattedValue += ' ';
+                }
+                
+                const hourDigits = Math.min(2, cleanValue.length - 8);
+                formattedValue += cleanValue.substring(8, 8 + hourDigits);
+                
+                // 如果已經輸入了 2 位小時，且正在繼續輸入，自動跳到分鐘
+                if (hourDigits === 2 && cursorPos >= 13 && isAddingDigit) {
+                    formattedValue += ':';
+                    // 如果正在輸入第 11 個數字，將光標移到分鐘位置
+                    if (cursorPos === 13) {
+                        newCursorPos = 14; // 小時後的分隔符位置
+                    }
+                }
+            }
+            
+            // 分鐘 (MM)
+            if (cleanValue.length > 10) {
+                if (formattedValue.length === 13) { // YYYY-MM-DD HH
+                    formattedValue += ':';
+                }
+                
+                const minuteDigits = Math.min(2, cleanValue.length - 10);
+                formattedValue += cleanValue.substring(10, 10 + minuteDigits);
+                
+                // 如果已經輸入了 2 位分鐘，且正在繼續輸入，自動跳到秒數
+                if (minuteDigits === 2 && cursorPos >= 16 && isAddingDigit) {
+                    formattedValue += ':';
+                    // 如果正在輸入第 13 個數字，將光標移到秒數位置
+                    if (cursorPos === 16) {
+                        newCursorPos = 17; // 分鐘後的分隔符位置
+                    }
+                }
+            }
+            
+            // 秒數 (SS)
+            if (cleanValue.length > 12) {
+                if (formattedValue.length === 16) { // YYYY-MM-DD HH:MM
+                    formattedValue += ':';
+                }
+                
+                const secondDigits = Math.min(2, cleanValue.length - 12);
+                formattedValue += cleanValue.substring(12, 12 + secondDigits);
+            }
+            
+            // 更新輸入框的值
+            if (value !== formattedValue) {
+                input.value = formattedValue;
+                input.setSelectionRange(newCursorPos, newCursorPos);
+                
+                // 嘗試驗證時間
+                const result = parseTimeInput(formattedValue);
+                if (result.valid) {
+                    showTimeFilterError(input.id, input.id === "startTimeFilter" ? "startTimeTooltip" : "endTimeTooltip", "");
+                    sortAndFilterTransactions();
+                } else if (formattedValue.length >= 10) { // 至少輸入了完整日期才驗證
+                    showTimeFilterError(input.id, input.id === "startTimeFilter" ? "startTimeTooltip" : "endTimeTooltip", result.message);
+                }
+            }
+        }
+        
+        // 格式化時間輸入
+        function formatTimeInput(input, cleanValue) {
+            let formattedValue = '';
+            
+            // 年份 (YYYY)
+            if (cleanValue.length >= 4) {
+                formattedValue += cleanValue.substring(0, 4);
+            } else {
+                formattedValue += cleanValue;
+                input.value = formattedValue;
+                input.setSelectionRange(formattedValue.length, formattedValue.length);
+                return;
+            }
+            
+            // 月份 (MM)
+            if (cleanValue.length > 4) {
+                formattedValue += '-';
+                
+                const monthDigits = Math.min(2, cleanValue.length - 4);
+                formattedValue += cleanValue.substring(4, 4 + monthDigits);
+            } else {
+                input.value = formattedValue;
+                input.setSelectionRange(formattedValue.length, formattedValue.length);
+                return;
+            }
+            
+            // 日期 (DD)
+            if (cleanValue.length > 6) {
+                formattedValue += '-';
+                
+                const dayDigits = Math.min(2, cleanValue.length - 6);
+                formattedValue += cleanValue.substring(6, 6 + dayDigits);
+            } else {
+                input.value = formattedValue;
+                input.setSelectionRange(formattedValue.length, formattedValue.length);
+                return;
+            }
+            
+            // 小時 (HH)
+            if (cleanValue.length > 8) {
+                formattedValue += ' ';
+                
+                const hourDigits = Math.min(2, cleanValue.length - 8);
+                formattedValue += cleanValue.substring(8, 8 + hourDigits);
+            } else {
+                input.value = formattedValue;
+                input.setSelectionRange(formattedValue.length, formattedValue.length);
+                return;
+            }
+            
+            // 分鐘 (MM)
+            if (cleanValue.length > 10) {
+                formattedValue += ':';
+                
+                const minuteDigits = Math.min(2, cleanValue.length - 10);
+                formattedValue += cleanValue.substring(10, 10 + minuteDigits);
+            } else {
+                input.value = formattedValue;
+                input.setSelectionRange(formattedValue.length, formattedValue.length);
+                return;
+            }
+            
+            // 秒數 (SS)
+            if (cleanValue.length > 12) {
+                formattedValue += ':';
+                
+                const secondDigits = Math.min(2, cleanValue.length - 12);
+                formattedValue += cleanValue.substring(12, 12 + secondDigits);
+            }
+            
+            input.value = formattedValue;
+            input.setSelectionRange(formattedValue.length, formattedValue.length);
+        }
+        
         // 設置時間過濾器的預設值
         function setDefaultTimeFilters() {
             // 將開始時間設為 2010/1/1 0:0
@@ -1197,46 +1413,22 @@
             document.getElementById("peerAddressFilterType").addEventListener("change", sortAndFilterTransactions);
             document.getElementById("actionFilter").addEventListener("change", sortAndFilterTransactions);
             
-            // 绑定時間過濾器的事件監聽器，使用 input 事件即時驗證和應用過濾條件
-            document.getElementById("startTimeFilter").addEventListener("input", function(e) {
-                const timeStr = e.target.value;
-                if (timeStr) {
-                    // 嘗試解析時間
-                    const result = parseTimeInput(timeStr);
-                    if (result.valid) {
-                        // 時間格式有效，移除錯誤樣式
-                        showTimeFilterError("startTimeFilter", "startTimeTooltip", "");
-                        // 立即應用過濾條件
-                        sortAndFilterTransactions();
-                    } else {
-                        // 時間格式無效，顯示錯誤提示
-                        showTimeFilterError("startTimeFilter", "startTimeTooltip", result.message);
-                    }
-                } else {
-                    // 如果清空了輸入框，移除錯誤樣式並應用過濾條件
-                    showTimeFilterError("startTimeFilter", "startTimeTooltip", "");
-                    sortAndFilterTransactions();
+            // 绑定時間過濾器的事件監聽器，使用智能時間輸入處理函數
+            document.getElementById("startTimeFilter").addEventListener("input", handleTimeInput);
+            document.getElementById("endTimeFilter").addEventListener("input", handleTimeInput);
+            
+            // 限制只能輸入數字
+            document.getElementById("startTimeFilter").addEventListener("keypress", function(e) {
+                // 只允許數字鍵和控制鍵
+                if (!/[0-9]/.test(e.key) && e.key.length === 1) {
+                    e.preventDefault();
                 }
             });
             
-            document.getElementById("endTimeFilter").addEventListener("input", function(e) {
-                const timeStr = e.target.value;
-                if (timeStr) {
-                    // 嘗試解析時間
-                    const result = parseTimeInput(timeStr);
-                    if (result.valid) {
-                        // 時間格式有效，移除錯誤樣式
-                        showTimeFilterError("endTimeFilter", "endTimeTooltip", "");
-                        // 立即應用過濾條件
-                        sortAndFilterTransactions();
-                    } else {
-                        // 時間格式無效，顯示錯誤提示
-                        showTimeFilterError("endTimeFilter", "endTimeTooltip", result.message);
-                    }
-                } else {
-                    // 如果清空了輸入框，移除錯誤樣式並應用過濾條件
-                    showTimeFilterError("endTimeFilter", "endTimeTooltip", "");
-                    sortAndFilterTransactions();
+            document.getElementById("endTimeFilter").addEventListener("keypress", function(e) {
+                // 只允許數字鍵和控制鍵
+                if (!/[0-9]/.test(e.key) && e.key.length === 1) {
+                    e.preventDefault();
                 }
             });
             
