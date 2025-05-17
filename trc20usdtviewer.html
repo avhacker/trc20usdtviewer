@@ -326,7 +326,7 @@
                 maxAmountPlaceholder: "最大金額",
                 walletAddressLabel: "地址",
                 walletBalanceLabel: "錢包餘額",
-                energyLabel: "能量",
+                energyLabel: "總可用能量",
                 query: "查詢",
                 viewOnTronscan: "在 Tronscan 查看",
                 minAmount: "最小:",
@@ -383,7 +383,7 @@
                 maxAmountPlaceholder: "Max amount",
                 walletAddressLabel: "Address",
                 walletBalanceLabel: "Wallet balance",
-                energyLabel: "Energy",
+                energyLabel: "Total available energy",
                 query: "Query",
                 viewOnTronscan: "View on Tronscan",
                 minAmount: "Min:",
@@ -1430,7 +1430,7 @@
                 document.getElementById("addressInput").value = address;
                 document.getElementById('usdtBalance').textContent = "0";
                 document.getElementById('trxBalance').textContent = "0";
-                document.getElementById('energyBalance').textContent = "0";
+                document.getElementById('energyBalance').innerHTML = "0 / <span style=\"color: var(--sent-color);\">0</span>";
                 
                 fetchBalance(address).then(balance => {
                     const formattedUsdt = balance.usdt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1455,12 +1455,13 @@
                     // 使用 toLocaleString 使數字每三位有一個逗號分隔
                     const formattedAvailable = availableEnergy.toLocaleString('en-US');
                     const formattedTotal = totalEnergy.toLocaleString('en-US');
-                    const energyDisplay = `${formattedAvailable} / ${formattedTotal}`;
+                    // 使用 HTML 標籤將總能量數值設為紅色
+                    const energyDisplay = `${formattedAvailable} / <span style="color: var(--sent-color);">${formattedTotal}</span>`;
                     
-                    document.getElementById('energyBalance').textContent = energyDisplay;
+                    document.getElementById('energyBalance').innerHTML = energyDisplay;
                 }).catch(error => {
                     console.error("Failed to fetch energy:", error);
-                    document.getElementById('energyBalance').textContent = "0/0";
+                    document.getElementById('energyBalance').innerHTML = "0 / <span style=\"color: var(--sent-color);\">0</span>";
                 });
                 
                 fetchAndDisplayTransactions(address); // 开始加载数据
