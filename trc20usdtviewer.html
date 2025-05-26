@@ -1405,8 +1405,13 @@
             // 將結束時間設為當前時間
             const endDate = new Date();
             
-            document.getElementById("startTimeFilter").value = formatDateToStandard(startDate);
-            document.getElementById("endTimeFilter").value = formatDateToStandard(endDate);
+            const urlParams = new URLSearchParams(window.location.search);
+            if (!urlParams.get("startTime")) {
+                document.getElementById("startTimeFilter").value = formatDateToStandard(startDate);
+            }
+            if (!urlParams.get("endTime")) {
+                document.getElementById("endTimeFilter").value = formatDateToStandard(endDate);
+            }
         }
         
         window.onload = () => {
@@ -1418,10 +1423,11 @@
             
             // 不再需要初始化金額複製圖標，因為已移除
             
+            loadURLParams(); // 加载 URL 参数
+
             // 設置時間過濾器的預設值
             setDefaultTimeFilters();
             
-            loadURLParams(); // 加载 URL 参数
             const urlParams = new URLSearchParams(window.location.search);
             const address = urlParams.get("address");
 
