@@ -297,6 +297,8 @@
         let totalRecords = 0; // 已加载的交易记录数
         let timeDisplayMode = "local"; // 時間顯示模式: local, utc, age
         let ageUpdateInterval = null; // 用于定期更新經過時間的計時器
+        const DEFAULT_START_TIME = "2019-01-01 00:00:00"; // 預設開始時間
+        const DEFAULT_END_TIME = "2029-01-01 00:00:00"; // 預設結束時間
         
         // 切換圖標的 SVG
         const toggleIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 85.208 122.882" style="vertical-align: middle; margin-left: 4px;"><g><path fill-rule="evenodd" clip-rule="evenodd" d="M57.121,122.882l28.087-29.215L67.13,93.665V67.004v-0.506V41.932H47.111V66.5 l0,0v27.165l-18.081,0.002L57.121,122.882L57.121,122.882z M28.09,0l28.086,29.215l-18.078,0.002v26.661v0.505V80.95H18.08V56.382 l0,0V29.217L0,29.215L28.09,0L28.09,0z"/></g></svg>`;
@@ -608,9 +610,18 @@
             }
             if (actionFilter) urlParams.set("action", actionFilter);
             
-            // 保存時間過濾器的值到 URL 參數
-            if (startTimeFilter) urlParams.set("startTime", startTimeFilter); else urlParams.delete("startTime");
-            if (endTimeFilter) urlParams.set("endTime", endTimeFilter); else urlParams.delete("endTime");
+            // 保存時間過濾器的值到 URL 參數，只有當值不等於預設值時才保存
+            if (startTimeFilter && startTimeFilter !== DEFAULT_START_TIME) {
+                urlParams.set("startTime", startTimeFilter);
+            } else {
+                urlParams.delete("startTime");
+            }
+            
+            if (endTimeFilter && endTimeFilter !== DEFAULT_END_TIME) {
+                urlParams.set("endTime", endTimeFilter);
+            } else {
+                urlParams.delete("endTime");
+            }
 
             if (sortField) urlParams.set("sortField", sortField);
             if (sortOrder) urlParams.set("sortOrder", sortOrder);
@@ -1400,17 +1411,17 @@
         
         // 設置時間過濾器的預設值
         function setDefaultTimeFilters() {
-            // 將開始時間設為 2010/1/1 0:0
-            const startDate = new Date(2010, 0, 1, 0, 0);
-            // 將結束時間設為當前時間
-            const endDate = new Date();
+            // 將開始時間設為 2019/1/1 0:0:0
+            const startDate = new Date(2019, 0, 1, 0, 0, 0);
+            // 將結束時間設為 2029/1/1 0:0:0
+            const endDate = new Date(2029, 0, 1, 0, 0, 0);
             
             const urlParams = new URLSearchParams(window.location.search);
             if (!urlParams.get("startTime")) {
-                document.getElementById("startTimeFilter").value = formatDateToStandard(startDate);
+                document.getElementById("startTimeFilter").value = DEFAULT_START_TIME;
             }
             if (!urlParams.get("endTime")) {
-                document.getElementById("endTimeFilter").value = formatDateToStandard(endDate);
+                document.getElementById("endTimeFilter").value = DEFAULT_END_TIME;
             }
         }
         
