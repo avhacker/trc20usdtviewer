@@ -1,0 +1,283 @@
+:root {
+    --primary: #1095c1;
+    --primary-hover: #0d7ea5;
+    --received-color: #2ecc71;
+    --sent-color: #e74c3c;
+}
+
+/* 自定義樣式 */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0.5rem;
+}
+
+header {
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+    background-color: var(--primary);
+    color: white;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.filters {
+    background-color: #f6f6f6;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.filter-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.filter-group label {
+    margin-bottom: 0.2rem;
+    font-size: 0.85rem;
+}
+
+.filter-group input, .filter-group select {
+    padding: 0.3rem;
+    font-size: 0.85rem;
+}
+
+.status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+h4 {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+button {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.85rem;
+}
+
+form button {
+    margin-top: 0.5rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+}
+
+th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+    cursor: pointer;
+    position: relative;
+    white-space: nowrap;
+    padding: 0.5rem;
+}
+
+th.sortable {
+    color: var(--primary);
+    cursor: default; /* 整個標頭不再是指針樣式 */
+    user-select: none; /* 禁止選取文字，手感更好 */
+    transition: background-color 0.2s, color 0.2s; /* 加點平滑變化 */
+    position: relative; /* 為內部元素定位做準備 */
+}
+
+.time-display, .text-content {
+    display: inline-block;
+    cursor: pointer; /* 時間顯示區域顯示指針樣式 */
+    padding-right: 25px; /* 為排序圖標留出空間 */
+    width: calc(100% - 25px); /* 確保文字內容不會與排序圖標重疊 */
+}
+
+.time-display:hover, .text-content:hover {
+    color: var(--primary-hover);
+}
+
+th .sort-icon {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M10 4l-4 4h8l-4-4zM10 16l4-4H6l4 4z' fill='%231095c1'/%3E%3C/svg%3E");
+    background-size: 20px 20px;
+    background-repeat: no-repeat;
+    background-position: center;
+    cursor: pointer;
+}
+
+th .sort-icon:hover {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M10 4l-4 4h8l-4-4zM10 16l4-4H6l4 4z' fill='%230d7ea5'/%3E%3C/svg%3E");
+}
+
+th:not(.sortable) {
+    cursor: default;
+}
+
+td {
+    padding: 0.5rem;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.transaction-link, .address-link {
+    color: var(--primary);
+    text-decoration: none;
+    word-break: break-all;
+}
+
+.transaction-link:hover, .address-link:hover {
+    text-decoration: underline;
+    color: var(--primary-hover);
+}
+
+.copy-icon {
+    cursor: pointer;
+    margin-left: 5px;
+    color: var(--primary);
+    font-size: 0.85rem;
+    vertical-align: middle;
+    transition: color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+}
+
+.copy-icon svg {
+    width: 16px;
+    height: 16px;
+    fill: var(--primary);
+}
+
+.copy-icon:hover svg {
+    fill: var(--primary-hover);
+}
+
+.copy-success svg {
+    fill: #2ecc71;
+}
+
+/* 時間過濾器錯誤樣式 */
+.time-filter-error {
+    border: 1px solid #e74c3c;
+    background-color: rgba(231, 76, 60, 0.1);
+}
+
+/* 時間過濾器提示訊息樣式 */
+.time-filter-tooltip {
+    position: absolute;
+    background-color: #e74c3c;
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.2rem;
+    font-size: 0.7rem;
+    z-index: 100;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.time-filter-tooltip.show {
+    opacity: 1;
+}
+
+/* 複製提示訊息樣式 */
+.copy-tooltip {
+    position: fixed;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    z-index: 1000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.copy-tooltip.show {
+    opacity: 1;
+}
+
+.action-received {
+    color: var(--received-color);
+    font-weight: bold;
+}
+
+.action-sent {
+    color: var(--sent-color);
+    font-weight: bold;
+}
+
+.transaction-cell {
+    min-width: 120px;
+    max-width: 180px;
+}
+
+.amount-cell {
+    width: 100px;
+    max-width: 120px;
+}
+
+.tronscan-icon-cell {
+    width: 40px;
+    text-align: center;
+}
+
+.tronscan-icon-cell img {
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+    text-align: right;
+}
+
+.address-cell {
+    min-width: 120px;
+    max-width: 150px;
+}
+
+.disabled-button {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+footer {
+    margin-top: 1rem;
+    font-size: 0.8rem;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .filter-group {
+        grid-template-columns: 1fr;
+    }
+
+    table {
+        display: block;
+        overflow-x: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.2rem;
+    }
+}
