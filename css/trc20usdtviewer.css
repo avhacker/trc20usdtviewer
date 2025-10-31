@@ -12,6 +12,18 @@
     padding: 0.5rem;
 }
 
+.container > section {
+    margin-bottom: 0.4rem;
+}
+
+.container > section:last-of-type {
+    margin-bottom: 0;
+}
+
+#results thead th {
+    background-color: #5c6a84;
+}
+
 header {
     margin-bottom: 1rem;
     padding: 0.5rem 0;
