@@ -1,3 +1,56 @@
+// ========== Rate Limiter 和 Retry 機制 ==========
+let lastApiCallTime = 0; // 上次 API 呼叫時間
+const API_CALL_INTERVAL = 1000; // API 呼叫間隔（毫秒）- 每秒最多 1 次
+const MAX_RETRY_ATTEMPTS = 3; // 最大重試次數
+const RETRY_DELAY_BASE = 2000; // 重試延遲基礎時間（毫秒）
+
+// Rate limiter: 確保 API 呼叫不會過於頻繁
+async function rateLimitedDelay() {
+    const now = Date.now();
+    const timeSinceLastCall = now - lastApiCallTime;
+
+    if (timeSinceLastCall < API_CALL_INTERVAL) {
+        const delayTime = API_CALL_INTERVAL - timeSinceLastCall;
+        console.log(`Rate limiting: 等待 ${delayTime}ms`);
+        await new Promise(resolve => setTimeout(resolve, delayTime));
+    }
+
+    lastApiCallTime = Date.now();
+}
+
+// 帶重試機制的 fetch wrapper
+async function fetchWithRetry(url, options = {}, retryCount = 0) {
+    // 先執行 rate limiting
+    await rateLimitedDelay();
+
+    try {
+        const response = await fetch(url, options);
+
+        // 如果是 429 錯誤（Too Many Requests），進行重試
+        if (response.status === 429 && retryCount < MAX_RETRY_ATTEMPTS) {
+            const retryDelay = RETRY_DELAY_BASE * Math.pow(2, retryCount); // 指數退避
+            console.log(`收到 429 錯誤，${retryDelay}ms 後進行第 ${retryCount + 1} 次重試...`);
+
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            return fetchWithRetry(url, options, retryCount + 1);
+        }
+
+        return response;
+    } catch (error) {
+        // 網路錯誤也可以重試
+        if (retryCount < MAX_RETRY_ATTEMPTS) {
+            const retryDelay = RETRY_DELAY_BASE * Math.pow(2, retryCount);
+            console.log(`網路錯誤，${retryDelay}ms 後進行第 ${retryCount + 1} 次重試...`, error);
+
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            return fetchWithRetry(url, options, retryCount + 1);
+        }
+
+        throw error;
+    }
+}
+
+// ========== 全域變數 ==========
 let isPaused = false; // 用于控制是否暂停
 let totalRecords = 0; // 已加载的交易记录数
 let timeDisplayMode = "local"; // 時間顯示模式: local, utc, age
@@ -564,8 +617,11 @@ function sortTransactions(field) {
 
 async function fetchBalance(address) {
     const apiUrl = `https://api.trongrid.io/v1/accounts/${address}`;
-    const response = await fetch(apiUrl);
-    // if (!response.ok) return null;
+    const response = await fetchWithRetry(apiUrl);
+    if (!response.ok) {
+        console.log("獲取餘額失敗，status:", response.status);
+        return { usdt: 0, trx: 0 };
+    }
     const data = await response.json();
 
     // 獲取TRX餘額
@@ -598,7 +654,7 @@ async function fetchEnergy(address) {
     try {
         // 使用正確的 API 端點獲取能量資訊
         const apiUrl = 'https://api.trongrid.io/wallet/getaccountresource';
-        const response = await fetch(apiUrl, {
+        const response = await fetchWithRetry(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -608,6 +664,14 @@ async function fetchEnergy(address) {
                 visible: true
             })
         });
+
+        if (!response.ok) {
+            console.log("獲取能量失敗，status:", response.status);
+            return {
+                available: 0,
+                total: 0
+            };
+        }
 
         const data = await response.json();
 
@@ -645,8 +709,40 @@ async function fetchAndDisplayTransactions(address) {
         const paramsstring = urlstring.substring(urlstring.indexOf("?"));
         console.log("Fetching transactions parameters:", paramsstring);
 
-        const response = await fetch(url);
-        if (!response.ok) break;
+        let response;
+        try {
+            response = await fetchWithRetry(url);
+        } catch (error) {
+            console.log("API 請求失敗，重試次數已用完:", error);
+            console.log("目前已載入記錄數:", totalRecords);
+
+            // API 錯誤時，設定為暫停狀態，讓用戶可以重試
+            isPaused = true;
+            const controlButton = document.getElementById("controlButton");
+            controlButton.textContent = translations[currentLanguage].continue;
+            controlButton.style.backgroundColor = "var(--primary)";
+            controlButton.setAttribute("aria-busy", "false");
+
+            updateStatusText("loading", totalRecords);
+            console.log("已設定 isPaused = true，按鈕文字:", controlButton.textContent);
+            break;
+        }
+
+        if (!response.ok) {
+            console.log("API 請求失敗，response.status:", response.status);
+            console.log("目前已載入記錄數:", totalRecords);
+
+            // API 錯誤時，設定為暫停狀態，讓用戶可以重試
+            isPaused = true;
+            const controlButton = document.getElementById("controlButton");
+            controlButton.textContent = translations[currentLanguage].continue;
+            controlButton.style.backgroundColor = "var(--primary)";
+            controlButton.setAttribute("aria-busy", "false");
+
+            updateStatusText("loading", totalRecords);
+            console.log("已設定 isPaused = true，按鈕文字:", controlButton.textContent);
+            break;
+        }
 
         const data = await response.json();
         const txs = data.data || [];
@@ -691,14 +787,17 @@ async function fetchAndDisplayTransactions(address) {
             shouldContinue = false; // 结束循环
         } else if (totalRecords >= maxRecords && !reachedMaxRecords && !ignoreMaxRecords) {
             // 达到最大记录数，但可以继续加载
+            console.log("達到最大記錄數限制，停止載入。totalRecords:", totalRecords);
             updateStatusText("loadingLimit", totalRecords);
             reachedMaxRecords = true;
             isPaused = true;
+            console.log("設定 isPaused = true");
 
             const controlButton = document.getElementById("controlButton");
             controlButton.textContent = translations[currentLanguage].continue;
             controlButton.style.backgroundColor = "var(--primary)";
             controlButton.setAttribute("aria-busy", "false");
+            console.log("按鈕文字已更新為:", controlButton.textContent);
 
             shouldContinue = false; // 结束循环
         }
