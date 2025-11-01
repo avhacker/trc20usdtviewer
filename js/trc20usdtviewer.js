@@ -127,7 +127,11 @@ const translations = {
         footer: " 2025 TRC20 USDT 交易紀錄查詢 | 使用 <a href=\"https://picocss.com\" target=\"_blank\">Pico.css</a> | <a href=\"mailto:avhacker@gmail.com\">avhacker@gmail.com</a>",
         filteredTotalReceived: "過濾後總收款",
         filteredTotalSent: "過濾後總付款",
-        copySuccess: "已複製！"
+        copySuccess: "已複製！",
+        loadingInProgress: "正在載入交易記錄...",
+        loadingPaused: "載入已暫停",
+        loadingCompleted: "所有交易記錄已載入完成",
+        loadingLimitReached: "已達到預設載入上限 ({0} 筆)，點擊「繼續載入」可載入更多記錄"
     },
     "en": {
         title: "TRC20 USDT Transaction History",
@@ -184,7 +188,11 @@ const translations = {
         footer: " 2025 TRC20 USDT Transaction Viewer | Powered by <a href=\"https://picocss.com\" target=\"_blank\">Pico.css</a> | <a href=\"mailto:avhacker@gmail.com\">avhacker@gmail.com</a>",
         filteredTotalReceived: "Filtered Total Received",
         filteredTotalSent: "Filtered Total Sent",
-        copySuccess: "Copied!"
+        copySuccess: "Copied!",
+        loadingInProgress: "Loading transactions...",
+        loadingPaused: "Loading paused",
+        loadingCompleted: "All transactions loaded",
+        loadingLimitReached: "Reached default limit ({0} records). Click 'Continue' to load more"
     }
 };
 
@@ -193,6 +201,47 @@ function formatString(str, ...args) {
     return str.replace(/{(\d+)}/g, (match, number) => {
         return typeof args[number] !== 'undefined' ? args[number] : match;
     });
+}
+
+// 更新載入狀態訊息
+function updateLoadingStatusMessage(statusType, ...args) {
+    const messageElement = document.getElementById("loadingStatusMessage");
+    if (!messageElement) return;
+
+    const t = translations[currentLanguage];
+    let message = "";
+    let shouldShow = false;
+
+    switch (statusType) {
+        case "loading":
+            message = t.loadingInProgress;
+            shouldShow = true;
+            break;
+        case "paused":
+            message = t.loadingPaused;
+            shouldShow = true;
+            break;
+        case "completed":
+            message = t.loadingCompleted;
+            shouldShow = true;
+            break;
+        case "limitReached":
+            message = formatString(t.loadingLimitReached, ...args);
+            shouldShow = true;
+            break;
+        case "hide":
+            shouldShow = false;
+            break;
+        default:
+            shouldShow = false;
+    }
+
+    if (shouldShow) {
+        messageElement.textContent = message;
+        messageElement.style.display = "block";
+    } else {
+        messageElement.style.display = "none";
+    }
 }
 
 // 获取当前用户语言并载入对应语言
@@ -701,6 +750,9 @@ async function fetchAndDisplayTransactions(address) {
     const apiUrl = `https://api.trongrid.io/v1/accounts/${address}/transactions/trc20`;
     let seenTransactionIds = new Set();
 
+    // 顯示載入中的訊息
+    updateLoadingStatusMessage("loading");
+
     let shouldContinue = true;
     while (shouldContinue && !isPaused) {
         const url = new URL(apiUrl);
@@ -724,6 +776,7 @@ async function fetchAndDisplayTransactions(address) {
             controlButton.setAttribute("aria-busy", "false");
 
             updateStatusText("loading", totalRecords);
+            updateLoadingStatusMessage("paused");
             console.log("已設定 isPaused = true，按鈕文字:", controlButton.textContent);
             break;
         }
@@ -740,6 +793,7 @@ async function fetchAndDisplayTransactions(address) {
             controlButton.setAttribute("aria-busy", "false");
 
             updateStatusText("loading", totalRecords);
+            updateLoadingStatusMessage("paused");
             console.log("已設定 isPaused = true，按鈕文字:", controlButton.textContent);
             break;
         }
@@ -784,6 +838,9 @@ async function fetchAndDisplayTransactions(address) {
             controlButton.classList.add("disabled-button");
             controlButton.setAttribute("aria-busy", "false");
 
+            // 顯示載入完成訊息
+            updateLoadingStatusMessage("completed");
+
             shouldContinue = false; // 结束循环
         } else if (totalRecords >= maxRecords && !reachedMaxRecords && !ignoreMaxRecords) {
             // 达到最大记录数，但可以继续加载
@@ -798,6 +855,9 @@ async function fetchAndDisplayTransactions(address) {
             controlButton.style.backgroundColor = "var(--primary)";
             controlButton.setAttribute("aria-busy", "false");
             console.log("按鈕文字已更新為:", controlButton.textContent);
+
+            // 顯示達到上限訊息
+            updateLoadingStatusMessage("limitReached", totalRecords);
 
             shouldContinue = false; // 结束循环
         }
@@ -818,6 +878,9 @@ function togglePause() {
         controlButton.textContent = translations[currentLanguage].continue;
         controlButton.style.backgroundColor = "var(--primary)";
         controlButton.setAttribute("aria-busy", "false");
+
+        // 顯示暫停訊息
+        updateLoadingStatusMessage("paused");
     } else {
         controlButton.textContent = translations[currentLanguage].pause;
 
@@ -831,7 +894,7 @@ function togglePause() {
         const urlParams = new URLSearchParams(window.location.search);
         const address = urlParams.get("address");
         if (address) {
-            fetchAndDisplayTransactions(address); // 重新启动数据加载
+            fetchAndDisplayTransactions(address); // 重新启动数据加载（會自動顯示載入中訊息）
         }
     }
 }
@@ -1387,6 +1450,17 @@ function toggleLanguage() {
     document.querySelectorAll('.tronscan-icon').forEach(icon => {
         icon.title = translations[currentLanguage].tronscanTooltip;
     });
+
+    // 更新載入狀態訊息
+    if (isLoadingComplete) {
+        updateLoadingStatusMessage("completed");
+    } else if (reachedMaxRecords && isPaused) {
+        updateLoadingStatusMessage("limitReached", totalRecords);
+    } else if (isPaused) {
+        updateLoadingStatusMessage("paused");
+    } else if (totalRecords > 0) {
+        updateLoadingStatusMessage("loading");
+    }
 
     // 更新時間標頭
     updateTimeHeader();
