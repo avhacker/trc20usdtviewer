@@ -12,11 +12,11 @@
     padding: 0.5rem;
 }
 
-.container > section {
+.container>section {
     margin-bottom: 0.4rem;
 }
 
-.container > section:last-of-type {
+.container>section:last-of-type {
     margin-bottom: 0;
 }
 
@@ -55,7 +55,8 @@ header h1 {
     font-size: 0.85rem;
 }
 
-.filter-group input, .filter-group select {
+.filter-group input,
+.filter-group select {
     padding: 0.3rem;
     font-size: 0.85rem;
 }
@@ -102,20 +103,29 @@ th {
 
 th.sortable {
     color: var(--primary);
-    cursor: default; /* 整個標頭不再是指針樣式 */
-    user-select: none; /* 禁止選取文字，手感更好 */
-    transition: background-color 0.2s, color 0.2s; /* 加點平滑變化 */
-    position: relative; /* 為內部元素定位做準備 */
+    cursor: default;
+    /* 整個標頭不再是指針樣式 */
+    user-select: none;
+    /* 禁止選取文字，手感更好 */
+    transition: background-color 0.2s, color 0.2s;
+    /* 加點平滑變化 */
+    position: relative;
+    /* 為內部元素定位做準備 */
 }
 
-.time-display, .text-content {
+.time-display,
+.text-content {
     display: inline-block;
-    cursor: pointer; /* 時間顯示區域顯示指針樣式 */
-    padding-right: 25px; /* 為排序圖標留出空間 */
-    width: calc(100% - 25px); /* 確保文字內容不會與排序圖標重疊 */
+    cursor: pointer;
+    /* 時間顯示區域顯示指針樣式 */
+    padding-right: 25px;
+    /* 為排序圖標留出空間 */
+    width: calc(100% - 25px);
+    /* 確保文字內容不會與排序圖標重疊 */
 }
 
-.time-display:hover, .text-content:hover {
+.time-display:hover,
+.text-content:hover {
     color: var(--primary-hover);
 }
 
@@ -147,13 +157,15 @@ td {
     vertical-align: middle;
 }
 
-.transaction-link, .address-link {
+.transaction-link,
+.address-link {
     color: var(--primary);
     text-decoration: none;
     word-break: break-all;
 }
 
-.transaction-link:hover, .address-link:hover {
+.transaction-link:hover,
+.address-link:hover {
     text-decoration: underline;
     color: var(--primary-hover);
 }
@@ -186,29 +198,49 @@ td {
     fill: #2ecc71;
 }
 
-/* 時間過濾器錯誤樣式 */
-.time-filter-error {
-    border: 1px solid #e74c3c;
-    background-color: rgba(231, 76, 60, 0.1);
+/* 日期時間輸入框樣式 */
+.date-time-group {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
 }
 
-/* 時間過濾器提示訊息樣式 */
-.time-filter-tooltip {
-    position: absolute;
-    background-color: #e74c3c;
-    color: white;
-    padding: 0.2rem 0.5rem;
-    border-radius: 0.2rem;
-    font-size: 0.7rem;
-    z-index: 100;
-    white-space: nowrap;
-    pointer-events: none;
-    opacity: 0;
+.date-input-wrapper {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+/* 時間切換按鈕 */
+.time-toggle-btn {
+    padding: 0;
+    margin-left: 2px;
+    z-index: 10;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.8rem;
+    opacity: 0.6;
     transition: opacity 0.2s;
 }
 
-.time-filter-tooltip.show {
+.time-toggle-btn:hover {
     opacity: 1;
+}
+
+.date-input-wrapper input[type="date"] {
+    cursor: pointer;
+}
+
+/* 快速按鈕群組 */
+.quick-btn-group {
+    margin-left: 0.5rem;
+}
+
+.quick-btn-group button {
+    white-space: nowrap;
 }
 
 /* 複製提示訊息樣式 */

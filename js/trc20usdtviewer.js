@@ -131,7 +131,11 @@ const translations = {
         loadingInProgress: "正在載入交易記錄...",
         loadingPaused: "載入已暫停",
         loadingCompleted: "所有交易記錄已載入完成",
-        loadingLimitReached: "已達到預設載入上限 ({0} 筆)，點擊「繼續載入」可載入更多記錄"
+        loadingLimitReached: "已達到預設載入上限 ({0} 筆)，點擊「繼續載入」可載入更多記錄",
+        btnToday: "今天",
+        btn3Days: "3天內",
+        btnWeek: "一週內",
+        timeToggleTitle: "指定時間"
     },
     "en": {
         title: "TRC20 USDT Transaction History",
@@ -192,7 +196,11 @@ const translations = {
         loadingInProgress: "Loading transactions...",
         loadingPaused: "Loading paused",
         loadingCompleted: "All transactions loaded",
-        loadingLimitReached: "Reached default limit ({0} records). Click 'Continue' to load more"
+        loadingLimitReached: "Reached default limit ({0} records). Click 'Continue' to load more",
+        btnToday: "Today",
+        btn3Days: "Within 3 Days",
+        btnWeek: "Within 1 Week",
+        timeToggleTitle: "Specify Time"
     }
 };
 
@@ -299,6 +307,15 @@ function applyTranslations() {
     document.getElementById("maxAmount").placeholder = t.maxAmountPlaceholder;
     document.getElementById("peerAddressFilter").placeholder = t.peerAddressPlaceholder;
 
+    // 更新快速按鈕文字
+    if (document.getElementById("btnToday")) document.getElementById("btnToday").textContent = t.btnToday;
+    if (document.getElementById("btn3Days")) document.getElementById("btn3Days").textContent = t.btn3Days;
+    if (document.getElementById("btnWeek")) document.getElementById("btnWeek").textContent = t.btnWeek;
+
+    // 更新時間切換按鈕的 title
+    if (document.getElementById("startTimeToggle")) document.getElementById("startTimeToggle").title = t.timeToggleTitle;
+    if (document.getElementById("endTimeToggle")) document.getElementById("endTimeToggle").title = t.timeToggleTitle;
+
     // 更新地址過濾類型選項
     const peerAddressFilterTypeSelect = document.getElementById("peerAddressFilterType");
     if (peerAddressFilterTypeSelect) {
@@ -403,8 +420,11 @@ function updateURLParams() {
     const peerAddressFilter = document.getElementById("peerAddressFilter").value;
     const peerAddressFilterType = document.getElementById("peerAddressFilterType").value;
     const actionFilter = document.getElementById("actionFilter").value;
-    const startTimeFilter = document.getElementById("startTimeFilter").value;
-    const endTimeFilter = document.getElementById("endTimeFilter").value;
+
+    const startDate = document.getElementById("startDate").value;
+    const startTime = document.getElementById("startTime").value;
+    const endDate = document.getElementById("endDate").value;
+    const endTime = document.getElementById("endTime").value;
 
     urlParams.set("min", minAmount);
     if (maxAmount) urlParams.set("max", maxAmount); else urlParams.delete("max");
@@ -417,15 +437,16 @@ function updateURLParams() {
     }
     if (actionFilter) urlParams.set("action", actionFilter);
 
-    // 保存時間過濾器的值到 URL 參數，只有當值不等於預設值時才保存
-    if (startTimeFilter && startTimeFilter !== DEFAULT_START_TIME) {
-        urlParams.set("startTime", startTimeFilter);
+    // 保存時間過濾器的值到 URL 參數
+    // 如果有選日期，則組合日期和時間
+    if (startDate) {
+        urlParams.set("startTime", `${startDate} ${startTime || "00:00:00"}`);
     } else {
         urlParams.delete("startTime");
     }
 
-    if (endTimeFilter && endTimeFilter !== DEFAULT_END_TIME) {
-        urlParams.set("endTime", endTimeFilter);
+    if (endDate) {
+        urlParams.set("endTime", `${endDate} ${endTime || "00:00:00"}`);
     } else {
         urlParams.delete("endTime");
     }
@@ -446,8 +467,25 @@ function loadURLParams() {
     document.getElementById("actionFilter").value = urlParams.get("action") || "both";
 
     // 從 URL 載入時間過濾器的參數
-    document.getElementById("startTimeFilter").value = urlParams.get("startTime") || "";
-    document.getElementById("endTimeFilter").value = urlParams.get("endTime") || "";
+    const startTimeStr = urlParams.get("startTime");
+    if (startTimeStr) {
+        const [date, time] = startTimeStr.split(" ");
+        document.getElementById("startDate").value = date;
+        if (time && time !== "00:00:00") {
+            document.getElementById("startTime").value = time;
+            document.getElementById("startTimeContainer").style.display = "block";
+        }
+    }
+
+    const endTimeStr = urlParams.get("endTime");
+    if (endTimeStr) {
+        const [date, time] = endTimeStr.split(" ");
+        document.getElementById("endDate").value = date;
+        if (time && time !== "00:00:00") {
+            document.getElementById("endTime").value = time;
+            document.getElementById("endTimeContainer").style.display = "block";
+        }
+    }
 
     sortField = urlParams.get("sortField") || null;
     sortOrder = urlParams.get("sortOrder") || null;
@@ -468,6 +506,60 @@ function updateSortIcons() {
     });
 }
 
+// 快速設定時間範圍
+function setQuickTimeRange(days) {
+    const now = new Date();
+    // 根據目前的 timeDisplayMode 判斷使用 UTC 或本地時間來計算日期
+    // 這裡我們以日期的 00:00:00 為基準
+
+    // 計算起始日期
+    const targetDate = new Date();
+    targetDate.setDate(now.getDate() - days);
+
+    // 格式化為 YYYY-MM-DD
+    const formatDate = (date) => {
+        const d = new Date(date);
+        let month = '' + (d.getMonth() + 1);
+        let day = '' + d.getDate();
+        const year = d.getFullYear();
+
+        if (month.length < 2) month = '0' + month;
+        if (day.length < 2) day = '0' + day;
+
+        return [year, month, day].join('-');
+    };
+
+    // 若 timeDisplayMode 為 utc，應使用 UTC 時間計算
+    // 但 <input type="date"> 始終使用本地時間解釋輸入的值
+    // 為了簡單起見，我們這裡統一將「今天」「三天內」解釋為本地時區的日期範圍
+    // 畢竟 input date 本身沒有時區概念
+
+    document.getElementById("startDate").value = formatDate(targetDate);
+    document.getElementById("startTime").value = "00:00:00";
+
+    // 結束日期留空 (表示查到最新)
+    document.getElementById("endDate").value = "";
+    document.getElementById("endTime").value = "00:00:00";
+
+    // 隱藏時間選擇器，除非用戶想改
+    document.getElementById("startTimeContainer").style.display = "none";
+    document.getElementById("endTimeContainer").style.display = "none";
+
+    // 自動觸發查詢
+    sortAndFilterTransactions();
+}
+
+function toggleTimeInput(type) {
+    const container = document.getElementById(type + "TimeContainer");
+    if (container.style.display === "none") {
+        container.style.display = "block";
+    } else {
+        container.style.display = "none";
+        // 隱藏時重置為 00:00:00
+        document.getElementById(type + "Time").value = "00:00:00";
+    }
+}
+
 function sortAndFilterTransactions() {
     const minAmount = parseFloat(document.getElementById("minAmount").value);
     const maxAmount = parseFloat(document.getElementById("maxAmount").value || null);
@@ -475,27 +567,21 @@ function sortAndFilterTransactions() {
     const peerAddressFilterType = document.getElementById("peerAddressFilterType").value;
     const actionFilter = document.getElementById("actionFilter").value || "both";
 
-    // 取得時間過濾器的值
-    const startTimeStr = document.getElementById("startTimeFilter").value;
-    const endTimeStr = document.getElementById("endTimeFilter").value;
+    // 取得新的日期時間輸入
+    const startDateVal = document.getElementById("startDate").value;
+    const startTimeVal = document.getElementById("startTime").value || "00:00:00";
+    const endDateVal = document.getElementById("endDate").value;
+    const endTimeVal = document.getElementById("endTime").value || "00:00:00";
 
-    // 將時間字符串轉換為時間戳
     let startTime = null;
     let endTime = null;
 
-    // 使用新的時間解析函數
-    if (startTimeStr) {
-        const startResult = parseTimeInput(startTimeStr);
-        if (startResult.valid) {
-            startTime = startResult.date.getTime();
-        }
+    if (startDateVal) {
+        startTime = new Date(`${startDateVal}T${startTimeVal}`).getTime();
     }
 
-    if (endTimeStr) {
-        const endResult = parseTimeInput(endTimeStr);
-        if (endResult.valid) {
-            endTime = endResult.date.getTime();
-        }
+    if (endDateVal) {
+        endTime = new Date(`${endDateVal}T${endTimeVal}`).getTime();
     }
 
     let filteredTransactions = allTransactions.filter(tx => {
@@ -590,8 +676,8 @@ function displayFilteredTransactions(transactions) {
         transactionIdCell.appendChild(copyIcon);
 
         const actionCell = row.insertCell();
-        actionCell.textContent = tx.action === "received" ? 
-            (currentLanguage === "zh-TW" ? "收款" : "Received") : 
+        actionCell.textContent = tx.action === "received" ?
+            (currentLanguage === "zh-TW" ? "收款" : "Received") :
             (currentLanguage === "zh-TW" ? "付款" : "Sent");
         actionCell.className = tx.action === "received" ? "action-received" : "action-sent";
 
@@ -600,7 +686,7 @@ function displayFilteredTransactions(transactions) {
         valueCell.className = "amount-cell";
         valueCell.style.cursor = "pointer";
         valueCell.title = "點擊複製金額";
-        valueCell.onclick = function(e) {
+        valueCell.onclick = function (e) {
             copyToClipboard(tx.value.toString(), this, e);
         };
 
@@ -644,8 +730,8 @@ function displayFilteredTransactions(transactions) {
 
     // 更新结果数量
     const t = translations[currentLanguage];
-    document.getElementById("resultCount").textContent = currentLanguage === "zh-TW" ? 
-        `顯示 ${transactions.length} 筆交易` : 
+    document.getElementById("resultCount").textContent = currentLanguage === "zh-TW" ?
+        `顯示 ${transactions.length} 筆交易` :
         `Showing ${transactions.length} transactions`;
 
     // 更新總收款量和總付款量
@@ -974,324 +1060,6 @@ function getCopyIconSvg() {
 }
 
 // 格式化日期為標準格式
-function formatDateToStandard(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-}
-
-// 驗證時間字符串並嘗試解析為 Date 對象
-function parseTimeInput(timeStr) {
-    if (!timeStr) return { valid: false, date: null, message: "請輸入時間" };
-
-    // 嘗試解析各種格式
-    let date;
-
-    // 先嘗試直接解析
-    date = new Date(timeStr.replace(' ', 'T'));
-    if (!isNaN(date.getTime())) {
-        return { valid: true, date: date, message: "" };
-    }
-
-    // 嘗試解析更寬鬆的格式
-    // 匹配格式：YYYY-M-D 或 YYYY/M/D 或 YYYY.M.D
-    const dateRegex = /^(\d{4})[\-\/\.](\d{1,2})[\-\/\.](\d{1,2})(?:[\sT](\d{1,2})(?::(\d{1,2})(?::(\d{1,2}))?)?)?$/;
-    const match = timeStr.match(dateRegex);
-
-    if (match) {
-        const year = parseInt(match[1]);
-        const month = parseInt(match[2]) - 1; // 月份需要減 1
-        const day = parseInt(match[3]);
-        const hours = match[4] ? parseInt(match[4]) : 0;
-        const minutes = match[5] ? parseInt(match[5]) : 0;
-        const seconds = match[6] ? parseInt(match[6]) : 0;
-
-        // 驗證值的範圍
-        if (month < 0 || month > 11) return { valid: false, date: null, message: "月份必須在 1-12 之間" };
-        if (day < 1 || day > 31) return { valid: false, date: null, message: "日期必須在 1-31 之間" };
-        if (hours < 0 || hours > 23) return { valid: false, date: null, message: "小時必須在 0-23 之間" };
-        if (minutes < 0 || minutes > 59) return { valid: false, date: null, message: "分鐘必須在 0-59 之間" };
-        if (seconds < 0 || seconds > 59) return { valid: false, date: null, message: "秒數必須在 0-59 之間" };
-
-        date = new Date(year, month, day, hours, minutes, seconds);
-
-        // 驗證日期是否有效
-        if (isNaN(date.getTime())) {
-            return { valid: false, date: null, message: "無效的日期" };
-        }
-
-        // 驗證月份和日期是否匹配
-        // 例如，2月不能有 30 或 31 日
-        if (date.getMonth() !== month || date.getDate() !== day) {
-            return { valid: false, date: null, message: "無效的日期組合" };
-        }
-
-        return { valid: true, date: date, message: "" };
-    }
-
-    return { valid: false, date: null, message: "無效的時間格式" };
-}
-
-// 顯示時間過濾器的錯誤提示
-function showTimeFilterError(inputId, tooltipId, message) {
-    const input = document.getElementById(inputId);
-    const tooltip = document.getElementById(tooltipId);
-
-    if (message) {
-        input.classList.add("time-filter-error");
-        tooltip.textContent = message;
-        tooltip.classList.add("show");
-
-        // 定位提示框
-        tooltip.style.top = (input.offsetHeight + 5) + "px";
-        tooltip.style.left = "0";
-
-        // 3 秒後自動隱藏提示
-        setTimeout(() => {
-            tooltip.classList.remove("show");
-        }, 3000);
-    } else {
-        input.classList.remove("time-filter-error");
-        tooltip.classList.remove("show");
-    }
-}
-
-// 智能時間輸入處理
-function handleTimeInput(e) {
-    const input = e.target;
-    const cursorPos = input.selectionStart;
-    let value = input.value;
-    const oldLength = value.length;
-
-    // 只允許數字輸入，自動添加分隔符
-    const cleanValue = value.replace(/[^0-9]/g, '');
-
-    // 如果用戶嘗試刪除分隔符，我們需要重新格式化
-    if (cleanValue.length !== value.replace(/[-:\s]/g, '').length) {
-        // 用戶嘗試刪除分隔符，我們需要重新格式化
-        formatTimeInput(input, cleanValue);
-        return;
-    }
-
-    // 根據輸入的數字長度自動添加分隔符
-    let formattedValue = '';
-    let newCursorPos = cursorPos;
-
-    // 判斷是否正在輸入新字符
-    const isAddingDigit = value.length > oldLength || (e.inputType && e.inputType.includes('insert'));
-
-    // 年份 (YYYY)
-    if (cleanValue.length >= 4) {
-        formattedValue += cleanValue.substring(0, 4);
-
-        // 如果已經輸入了 4 位年份，且正在繼續輸入，自動跳到月份
-        if (cleanValue.length >= 4 && cursorPos >= 4 && isAddingDigit) {
-            formattedValue += '-';
-            // 如果正在輸入第 5 個數字，將光標移到月份位置
-            if (cursorPos === 4) {
-                newCursorPos = 5; // 年份後的分隔符位置
-            }
-        }
-    } else {
-        formattedValue += cleanValue;
-    }
-
-    // 月份 (MM)
-    if (cleanValue.length > 4) {
-        if (formattedValue.length === 4) {
-            formattedValue += '-';
-        }
-
-        const monthDigits = Math.min(2, cleanValue.length - 4);
-        formattedValue += cleanValue.substring(4, 4 + monthDigits);
-
-        // 如果已經輸入了 2 位月份，且正在繼續輸入，自動跳到日期
-        if (monthDigits === 2 && cursorPos >= 7 && isAddingDigit) {
-            formattedValue += '-';
-            // 如果正在輸入第 7 個數字，將光標移到日期位置
-            if (cursorPos === 7) {
-                newCursorPos = 8; // 月份後的分隔符位置
-            }
-        }
-    }
-
-    // 日期 (DD)
-    if (cleanValue.length > 6) {
-        if (formattedValue.length === 7) { // YYYY-MM
-            formattedValue += '-';
-        }
-
-        const dayDigits = Math.min(2, cleanValue.length - 6);
-        formattedValue += cleanValue.substring(6, 6 + dayDigits);
-
-        // 如果已經輸入了 2 位日期，且正在繼續輸入，自動跳到小時
-        if (dayDigits === 2 && cursorPos >= 10 && isAddingDigit) {
-            formattedValue += ' ';
-            // 如果正在輸入第 9 個數字，將光標移到小時位置
-            if (cursorPos === 10) {
-                newCursorPos = 11; // 日期後的空格位置
-            }
-        }
-    }
-
-    // 小時 (HH)
-    if (cleanValue.length > 8) {
-        if (formattedValue.length === 10) { // YYYY-MM-DD
-            formattedValue += ' ';
-        }
-
-        const hourDigits = Math.min(2, cleanValue.length - 8);
-        formattedValue += cleanValue.substring(8, 8 + hourDigits);
-
-        // 如果已經輸入了 2 位小時，且正在繼續輸入，自動跳到分鐘
-        if (hourDigits === 2 && cursorPos >= 13 && isAddingDigit) {
-            formattedValue += ':';
-            // 如果正在輸入第 11 個數字，將光標移到分鐘位置
-            if (cursorPos === 13) {
-                newCursorPos = 14; // 小時後的分隔符位置
-            }
-        }
-    }
-
-    // 分鐘 (MM)
-    if (cleanValue.length > 10) {
-        if (formattedValue.length === 13) { // YYYY-MM-DD HH
-            formattedValue += ':';
-        }
-
-        const minuteDigits = Math.min(2, cleanValue.length - 10);
-        formattedValue += cleanValue.substring(10, 10 + minuteDigits);
-
-        // 如果已經輸入了 2 位分鐘，且正在繼續輸入，自動跳到秒數
-        if (minuteDigits === 2 && cursorPos >= 16 && isAddingDigit) {
-            formattedValue += ':';
-            // 如果正在輸入第 13 個數字，將光標移到秒數位置
-            if (cursorPos === 16) {
-                newCursorPos = 17; // 分鐘後的分隔符位置
-            }
-        }
-    }
-
-    // 秒數 (SS)
-    if (cleanValue.length > 12) {
-        if (formattedValue.length === 16) { // YYYY-MM-DD HH:MM
-            formattedValue += ':';
-        }
-
-        const secondDigits = Math.min(2, cleanValue.length - 12);
-        formattedValue += cleanValue.substring(12, 12 + secondDigits);
-    }
-
-    // 更新輸入框的值
-    if (value !== formattedValue) {
-        input.value = formattedValue;
-        input.setSelectionRange(newCursorPos, newCursorPos);
-
-        // 嘗試驗證時間
-        const result = parseTimeInput(formattedValue);
-        if (result.valid) {
-            showTimeFilterError(input.id, input.id === "startTimeFilter" ? "startTimeTooltip" : "endTimeTooltip", "");
-            sortAndFilterTransactions();
-        } else if (formattedValue.length >= 10) { // 至少輸入了完整日期才驗證
-            showTimeFilterError(input.id, input.id === "startTimeFilter" ? "startTimeTooltip" : "endTimeTooltip", result.message);
-        }
-    }
-}
-
-// 格式化時間輸入
-function formatTimeInput(input, cleanValue) {
-    let formattedValue = '';
-
-    // 年份 (YYYY)
-    if (cleanValue.length >= 4) {
-        formattedValue += cleanValue.substring(0, 4);
-    } else {
-        formattedValue += cleanValue;
-        input.value = formattedValue;
-        input.setSelectionRange(formattedValue.length, formattedValue.length);
-        return;
-    }
-
-    // 月份 (MM)
-    if (cleanValue.length > 4) {
-        formattedValue += '-';
-
-        const monthDigits = Math.min(2, cleanValue.length - 4);
-        formattedValue += cleanValue.substring(4, 4 + monthDigits);
-    } else {
-        input.value = formattedValue;
-        input.setSelectionRange(formattedValue.length, formattedValue.length);
-        return;
-    }
-
-    // 日期 (DD)
-    if (cleanValue.length > 6) {
-        formattedValue += '-';
-
-        const dayDigits = Math.min(2, cleanValue.length - 6);
-        formattedValue += cleanValue.substring(6, 6 + dayDigits);
-    } else {
-        input.value = formattedValue;
-        input.setSelectionRange(formattedValue.length, formattedValue.length);
-        return;
-    }
-
-    // 小時 (HH)
-    if (cleanValue.length > 8) {
-        formattedValue += ' ';
-
-        const hourDigits = Math.min(2, cleanValue.length - 8);
-        formattedValue += cleanValue.substring(8, 8 + hourDigits);
-    } else {
-        input.value = formattedValue;
-        input.setSelectionRange(formattedValue.length, formattedValue.length);
-        return;
-    }
-
-    // 分鐘 (MM)
-    if (cleanValue.length > 10) {
-        formattedValue += ':';
-
-        const minuteDigits = Math.min(2, cleanValue.length - 10);
-        formattedValue += cleanValue.substring(10, 10 + minuteDigits);
-    } else {
-        input.value = formattedValue;
-        input.setSelectionRange(formattedValue.length, formattedValue.length);
-        return;
-    }
-
-    // 秒數 (SS)
-    if (cleanValue.length > 12) {
-        formattedValue += ':';
-
-        const secondDigits = Math.min(2, cleanValue.length - 12);
-        formattedValue += cleanValue.substring(12, 12 + secondDigits);
-    }
-
-    input.value = formattedValue;
-    input.setSelectionRange(formattedValue.length, formattedValue.length);
-}
-
-// 設置時間過濾器的預設值
-function setDefaultTimeFilters() {
-    // 將開始時間設為 2019/1/1 0:0:0
-    const startDate = new Date(2019, 0, 1, 0, 0, 0);
-    // 將結束時間設為 2029/1/1 0:0:0
-    const endDate = new Date(2029, 0, 1, 0, 0, 0);
-
-    const urlParams = new URLSearchParams(window.location.search);
-    if (!urlParams.get("startTime")) {
-        document.getElementById("startTimeFilter").value = DEFAULT_START_TIME;
-    }
-    if (!urlParams.get("endTime")) {
-        document.getElementById("endTimeFilter").value = DEFAULT_END_TIME;
-    }
-}
-
 window.onload = () => {
     // 首先检测语言并应用翻译
     detectLanguage();
@@ -1302,9 +1070,6 @@ window.onload = () => {
     // 不再需要初始化金額複製圖標，因為已移除
 
     loadURLParams(); // 加载 URL 参数
-
-    // 設置時間過濾器的預設值
-    setDefaultTimeFilters();
 
     const urlParams = new URLSearchParams(window.location.search);
     const address = urlParams.get("address");
@@ -1352,7 +1117,7 @@ window.onload = () => {
     }
 
     // 設置查詢按鈕的點擊事件
-    document.getElementById("queryButton").onclick = function() {
+    document.getElementById("queryButton").onclick = function () {
         // 在提交表單前，將當前語系設定到隱藏的語言輸入欄位
         document.getElementById("langInput").value = currentLanguage;
         // 提交表單
@@ -1370,53 +1135,23 @@ window.onload = () => {
     document.getElementById("peerAddressFilterType").addEventListener("change", sortAndFilterTransactions);
     document.getElementById("actionFilter").addEventListener("change", sortAndFilterTransactions);
 
-    // 绑定時間過濾器的事件監聽器，使用智能時間輸入處理函數
-    document.getElementById("startTimeFilter").addEventListener("input", handleTimeInput);
-    document.getElementById("endTimeFilter").addEventListener("input", handleTimeInput);
+    // 绑定時間過濾器的事件監聽器
+    document.getElementById("startDate").addEventListener("change", sortAndFilterTransactions);
+    document.getElementById("startTime").addEventListener("change", sortAndFilterTransactions);
+    document.getElementById("endDate").addEventListener("change", sortAndFilterTransactions);
+    document.getElementById("endTime").addEventListener("change", sortAndFilterTransactions);
 
-    // 限制只能輸入數字
-    document.getElementById("startTimeFilter").addEventListener("keypress", function(e) {
-        // 只允許數字鍵和控制鍵
-        if (!/[0-9]/.test(e.key) && e.key.length === 1) {
-            e.preventDefault();
-        }
-    });
+    // 時間切換按鈕事件
+    document.getElementById("startTimeToggle").onclick = function () { toggleTimeInput("start"); };
+    document.getElementById("endTimeToggle").onclick = function () { toggleTimeInput("end"); };
 
-    document.getElementById("endTimeFilter").addEventListener("keypress", function(e) {
-        // 只允許數字鍵和控制鍵
-        if (!/[0-9]/.test(e.key) && e.key.length === 1) {
-            e.preventDefault();
-        }
-    });
-
-    // 在失去焦點時格式化時間輸入
-    document.getElementById("startTimeFilter").addEventListener("blur", function(e) {
-        const timeStr = e.target.value;
-        if (timeStr) {
-            const result = parseTimeInput(timeStr);
-            if (result.valid) {
-                // 將時間格式化為標準格式
-                e.target.value = formatDateToStandard(result.date);
-                sortAndFilterTransactions();
-            }
-        }
-    });
-
-    document.getElementById("endTimeFilter").addEventListener("blur", function(e) {
-        const timeStr = e.target.value;
-        if (timeStr) {
-            const result = parseTimeInput(timeStr);
-            if (result.valid) {
-                // 將時間格式化為標準格式
-                e.target.value = formatDateToStandard(result.date);
-                sortAndFilterTransactions();
-            }
-        }
-    });
+    // 快速選擇按鈕事件
+    document.getElementById("btnToday").onclick = function () { setQuickTimeRange(0); };
+    document.getElementById("btn3Days").onclick = function () { setQuickTimeRange(2); };
+    document.getElementById("btnWeek").onclick = function () { setQuickTimeRange(6); };
 
     // 更新排序图示
     updateSortIcons();
-    setDefaultTimeFilters();
 };
 
 // 切换语言
