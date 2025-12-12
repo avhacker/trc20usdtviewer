@@ -68,6 +68,8 @@ let sortOrder = null; // 当前排序方向（asc/desc）
 let isLoadingComplete = false; // 是否已完成加载
 let reachedMaxRecords = false; // 是否已達到最大記錄數
 let ignoreMaxRecords = false; // 是否忽略最大記錄數限制
+let isFetching = false; // 是否正在載入中
+let minLoadedTimestamp = Infinity; // 目前已載入的最小時間戳 (毫秒)
 let currentLanguage = ""; // 當前語言
 
 // 語言包
@@ -641,6 +643,85 @@ function sortAndFilterTransactions() {
 
     updateURLParams(); // 将筛选和排序条件写回 URL
     displayFilteredTransactions(filteredTransactions);
+
+    // 檢查是否需要繼續載入
+    checkAndResumeLoading();
+}
+
+function checkAndResumeLoading() {
+    // 如果所有記錄都載完了，就不需要再檢查
+    if (isLoadingComplete) return;
+
+    // 獲取設定的開始時間
+    const startDateVal = document.getElementById("startDate").value;
+    const startTimeVal = document.getElementById("startTime").value || "00:00:00";
+    let startTime = null;
+
+    if (startDateVal) {
+        startTime = new Date(`${startDateVal}T${startTimeVal}`).getTime();
+    }
+
+    // 如果使用者有設定開始時間
+    if (startTime) {
+        // 如果設定的開始時間 < 目前已載入的最小時間
+        // 即：使用者想看更早的資料，但我們還沒載到那邊
+        if (startTime < minLoadedTimestamp) {
+            console.log(`需要載入更多資料: 目標時間 ${new Date(startTime).toLocaleString()} < 目前最小時間 ${new Date(minLoadedTimestamp).toLocaleString()}`);
+
+            // 如果目前沒有在載入中，則觸發載入
+            if (!isFetching) {
+                // 如果是暫停狀態，要解除暫停
+                if (isPaused) {
+                    console.log("解除暫停，繼續載入...");
+                    isPaused = false;
+                    const controlButton = document.getElementById("controlButton");
+                    controlButton.textContent = translations[currentLanguage].pause;
+
+                    // 確保不被最大記錄數限制擋住 (如果之前是因為最大記錄數停下的)
+                    if (reachedMaxRecords) {
+                        reachedMaxRecords = false;
+                        ignoreMaxRecords = true;
+                    }
+
+                    updateStatusText("loadingContinue", totalRecords);
+                }
+
+                // 重新啟動載入
+                const urlParams = new URLSearchParams(window.location.search);
+                const address = urlParams.get("address");
+                if (address) {
+                    fetchAndDisplayTransactions(address);
+                }
+            }
+        }
+    } else {
+        // 如果使用者清空了開始時間 (表示想看所有歷史)，且還沒載完
+        if (!isFetching && isPaused && !isLoadingComplete) {
+            console.log("使用者清除了開始時間限制，繼續載入...");
+
+            // 把暫停解除，繼續載
+            isPaused = false;
+
+            // 如果之前是因為最大記錄數停下的，這裡看策略
+            // 策略 A: 清除時間限制 = 想看更多 -> 自動解除上限限制繼續載
+            // 策略 B: 清除時間限制 -> 還是受到最大筆數限制 (如果已達上限就不動)
+            // 這裡採用策略 A，讓體驗更流暢
+            if (reachedMaxRecords) {
+                reachedMaxRecords = false;
+                ignoreMaxRecords = true;
+            }
+
+            const controlButton = document.getElementById("controlButton");
+            controlButton.textContent = translations[currentLanguage].pause;
+            updateStatusText("loadingContinue", totalRecords);
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const address = urlParams.get("address");
+            if (address) {
+                fetchAndDisplayTransactions(address);
+            }
+        }
+    }
 }
 
 function displayFilteredTransactions(transactions) {
@@ -839,116 +920,157 @@ async function fetchAndDisplayTransactions(address) {
     // 顯示載入中的訊息
     updateLoadingStatusMessage("loading");
 
+    if (isFetching) {
+        console.log("已經在載入中，跳過重複呼叫");
+        return;
+    }
+    isFetching = true;
+
     let shouldContinue = true;
-    while (shouldContinue && !isPaused) {
-        const url = new URL(apiUrl);
-        Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-        const urlstring = url.toString();
-        const paramsstring = urlstring.substring(urlstring.indexOf("?"));
-        console.log("Fetching transactions parameters:", paramsstring);
+    try {
+        while (shouldContinue && !isPaused) {
+            const url = new URL(apiUrl);
+            Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+            const urlstring = url.toString();
+            const paramsstring = urlstring.substring(urlstring.indexOf("?"));
+            console.log("Fetching transactions parameters:", paramsstring);
 
-        let response;
-        try {
-            response = await fetchWithRetry(url);
-        } catch (error) {
-            console.log("API 請求失敗，重試次數已用完:", error);
-            console.log("目前已載入記錄數:", totalRecords);
+            let response;
+            try {
+                response = await fetchWithRetry(url);
+            } catch (error) {
+                console.log("API 請求失敗，重試次數已用完:", error);
+                console.log("目前已載入記錄數:", totalRecords);
 
-            // API 錯誤時，設定為暫停狀態，讓用戶可以重試
-            isPaused = true;
-            const controlButton = document.getElementById("controlButton");
-            controlButton.textContent = translations[currentLanguage].continue;
-            controlButton.style.backgroundColor = "var(--primary)";
-            controlButton.setAttribute("aria-busy", "false");
+                // API 錯誤時，設定為暫停狀態，讓用戶可以重試
+                isPaused = true;
+                const controlButton = document.getElementById("controlButton");
+                controlButton.textContent = translations[currentLanguage].continue;
+                controlButton.style.backgroundColor = "var(--primary)";
+                controlButton.setAttribute("aria-busy", "false");
+
+                updateStatusText("loading", totalRecords);
+                updateLoadingStatusMessage("paused");
+                console.log("已設定 isPaused = true，按鈕文字:", controlButton.textContent);
+                break;
+            }
+
+            if (!response.ok) {
+                console.log("API 請求失敗，response.status:", response.status);
+                console.log("目前已載入記錄數:", totalRecords);
+
+                // API 錯誤時，設定為暫停狀態，讓用戶可以重試
+                isPaused = true;
+                const controlButton = document.getElementById("controlButton");
+                controlButton.textContent = translations[currentLanguage].continue;
+                controlButton.style.backgroundColor = "var(--primary)";
+                controlButton.setAttribute("aria-busy", "false");
+
+                updateStatusText("loading", totalRecords);
+                updateLoadingStatusMessage("paused");
+                console.log("已設定 isPaused = true，按鈕文字:", controlButton.textContent);
+                break;
+            }
+
+            const data = await response.json();
+            const txs = data.data || [];
+
+            const newTransactions = txs.filter(tx => {
+                const value = parseFloat(tx.value) / Math.pow(10, tx.token_info.decimals);
+                return tx.token_info?.address === contractAddress &&
+                    !seenTransactionIds.has(tx.transaction_id) &&
+                    tx.type === "Transfer"; // 只處理 Transfer 類型的交易
+            }).map(tx => {
+                const value = parseFloat(tx.value) / Math.pow(10, tx.token_info.decimals);
+                const peerAddress = tx.to === address ? tx.from : tx.to;
+                const action = tx.to === address ? "received" : "sent";
+                seenTransactionIds.add(tx.transaction_id);
+
+                return {
+                    transactionId: tx.transaction_id,
+                    value,
+                    timestamp: tx.block_timestamp,
+                    action,
+                    peerAddress,
+                };
+            });
+
+            // 更新最小時間戳
+            if (newTransactions.length > 0) {
+                const lastTx = newTransactions[newTransactions.length - 1];
+                if (lastTx.timestamp < minLoadedTimestamp) {
+                    minLoadedTimestamp = lastTx.timestamp;
+                }
+            }
+
+            allTransactions = [...allTransactions, ...newTransactions];
+            totalRecords += newTransactions.length;
 
             updateStatusText("loading", totalRecords);
-            updateLoadingStatusMessage("paused");
-            console.log("已設定 isPaused = true，按鈕文字:", controlButton.textContent);
-            break;
+            sortAndFilterTransactions();
+
+            if (txs.length < 200) {
+                updateStatusText("complete", totalRecords);
+                isLoadingComplete = true;
+
+                // 禁用暂停按钮
+                const controlButton = document.getElementById("controlButton");
+                controlButton.textContent = translations[currentLanguage].loadComplete;
+                controlButton.disabled = true;
+                controlButton.classList.add("disabled-button");
+                controlButton.setAttribute("aria-busy", "false");
+
+                // 顯示載入完成訊息
+                updateLoadingStatusMessage("completed");
+
+                shouldContinue = false; // 结束循环
+            } else if (totalRecords >= maxRecords && !reachedMaxRecords && !ignoreMaxRecords) {
+                // 达到最大记录数，但可以继续加载
+                console.log("達到最大記錄數限制，停止載入。totalRecords:", totalRecords);
+                updateStatusText("loadingLimit", totalRecords);
+                reachedMaxRecords = true;
+                isPaused = true;
+                console.log("設定 isPaused = true");
+
+                const controlButton = document.getElementById("controlButton");
+                controlButton.textContent = translations[currentLanguage].continue;
+                controlButton.style.backgroundColor = "var(--primary)";
+                controlButton.setAttribute("aria-busy", "false");
+                console.log("按鈕文字已更新為:", controlButton.textContent);
+
+                // 顯示達到上限訊息
+                updateLoadingStatusMessage("limitReached", totalRecords);
+
+                shouldContinue = false; // 结束循环
+            }
+
+            params.max_timestamp = txs[txs.length - 1].block_timestamp - 1;
+
+            // 檢查是否已經載入到了設定的開始時間
+            // 如果有設定開始時間，且目前載入到的最舊資料已經早於開始時間，就可以先休息一下
+            const startDateVal = document.getElementById("startDate").value;
+            const startTimeVal = document.getElementById("startTime").value || "00:00:00";
+            if (startDateVal) {
+                const startTime = new Date(`${startDateVal}T${startTimeVal}`).getTime();
+                if (minLoadedTimestamp < startTime) {
+                    console.log(`已載入至設定的開始時間 (${startDateVal} ${startTimeVal})，暫停載入。`);
+                    // 這裡我們不設 isPaused = true，而是單純跳出迴圈
+                    // 這樣狀態會保持在「可繼續」，但不會一直跑 API
+                    shouldContinue = false;
+
+                    // 更新按鈕狀態顯示為暫停 (因為實際上停了)
+                    isPaused = true;
+                    const controlButton = document.getElementById("controlButton");
+                    controlButton.textContent = translations[currentLanguage].continue;
+                    // 更新狀態文字，讓使用者知道是因為範圍到了才停
+                    // 但為了簡單，這裡用原本的 loading 狀態顯示已載入筆數即可，或者可以加一個新的提示
+                    updateStatusText("loading", totalRecords);
+                    updateLoadingStatusMessage("paused");
+                }
+            }
         }
-
-        if (!response.ok) {
-            console.log("API 請求失敗，response.status:", response.status);
-            console.log("目前已載入記錄數:", totalRecords);
-
-            // API 錯誤時，設定為暫停狀態，讓用戶可以重試
-            isPaused = true;
-            const controlButton = document.getElementById("controlButton");
-            controlButton.textContent = translations[currentLanguage].continue;
-            controlButton.style.backgroundColor = "var(--primary)";
-            controlButton.setAttribute("aria-busy", "false");
-
-            updateStatusText("loading", totalRecords);
-            updateLoadingStatusMessage("paused");
-            console.log("已設定 isPaused = true，按鈕文字:", controlButton.textContent);
-            break;
-        }
-
-        const data = await response.json();
-        const txs = data.data || [];
-
-        const newTransactions = txs.filter(tx => {
-            const value = parseFloat(tx.value) / Math.pow(10, tx.token_info.decimals);
-            return tx.token_info?.address === contractAddress &&
-                !seenTransactionIds.has(tx.transaction_id) &&
-                tx.type === "Transfer"; // 只處理 Transfer 類型的交易
-        }).map(tx => {
-            const value = parseFloat(tx.value) / Math.pow(10, tx.token_info.decimals);
-            const peerAddress = tx.to === address ? tx.from : tx.to;
-            const action = tx.to === address ? "received" : "sent";
-            seenTransactionIds.add(tx.transaction_id);
-
-            return {
-                transactionId: tx.transaction_id,
-                value,
-                timestamp: tx.block_timestamp,
-                action,
-                peerAddress,
-            };
-        });
-
-        allTransactions = [...allTransactions, ...newTransactions];
-        totalRecords += newTransactions.length;
-
-        updateStatusText("loading", totalRecords);
-        sortAndFilterTransactions();
-
-        if (txs.length < 200) {
-            updateStatusText("complete", totalRecords);
-            isLoadingComplete = true;
-
-            // 禁用暂停按钮
-            const controlButton = document.getElementById("controlButton");
-            controlButton.textContent = translations[currentLanguage].loadComplete;
-            controlButton.disabled = true;
-            controlButton.classList.add("disabled-button");
-            controlButton.setAttribute("aria-busy", "false");
-
-            // 顯示載入完成訊息
-            updateLoadingStatusMessage("completed");
-
-            shouldContinue = false; // 结束循环
-        } else if (totalRecords >= maxRecords && !reachedMaxRecords && !ignoreMaxRecords) {
-            // 达到最大记录数，但可以继续加载
-            console.log("達到最大記錄數限制，停止載入。totalRecords:", totalRecords);
-            updateStatusText("loadingLimit", totalRecords);
-            reachedMaxRecords = true;
-            isPaused = true;
-            console.log("設定 isPaused = true");
-
-            const controlButton = document.getElementById("controlButton");
-            controlButton.textContent = translations[currentLanguage].continue;
-            controlButton.style.backgroundColor = "var(--primary)";
-            controlButton.setAttribute("aria-busy", "false");
-            console.log("按鈕文字已更新為:", controlButton.textContent);
-
-            // 顯示達到上限訊息
-            updateLoadingStatusMessage("limitReached", totalRecords);
-
-            shouldContinue = false; // 结束循环
-        }
-
-        params.max_timestamp = txs[txs.length - 1].block_timestamp - 1;
+    } finally {
+        isFetching = false;
     }
 }
 
