@@ -1,162 +1,163 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-TW" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="title">TRC20 USDT 交易紀錄查詢</title>
-    <!-- 引入 Pico.css 框架 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <link rel="icon" type="image/svg+xml"
         href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><circle cx='50' cy='60' r='50' fill='%2326A17B'/><text x='50' y='100' text-anchor='middle' font-size='80' font-family='Arial, sans-serif' fill='white'>T</text></svg>">
-    <link rel="stylesheet" href="css/trc20usdtviewer.css?v=20251209">
-    <script src="js/trc20usdtviewer.js?v=20251209" defer></script>
+    <link rel="stylesheet" href="css/trc20usdtviewer.css?v=20260313c">
+    <script src="js/trc20usdtviewer.js?v=20260313b" defer></script>
 </head>
 
 <body>
     <main class="container">
-        <section style="margin-bottom: 0.2rem;">
-            <form id="queryForm" action="" method="GET">
-                <div class="grid">
-                    <div>
-                        <label for="addressInput" style="display: flex; align-items: center;">
-                            <input type="text" id="addressInput" name="address" placeholder="輸入 TRC20 錢包地址" required
-                                style="width: 24rem;">
-                            <button id="queryButton" type="button"
-                                style="width: 4rem;font-size: inherit; padding: 0.1rem 0.2rem; margin: 0 0.4rem;">查詢</button>
-                            <button id="controlButton" type="button" class="contrast"
-                                style="width: 4rem;padding: 0.2rem 0.2rem; font-size: 0.8rem; margin: 0 0.4rem;white-space: nowrap; background-color: var(--primary);">暫停載入</button>
-                            <button id="clearFiltersButton" class="secondary outline"
-                                style="width: 6rem;font-size: 0.8re,; padding: 0.1rem 0.2rem; margin: 0 0.4rem;">清除</button>
-                            <button id="languageToggle" type="button" class="secondary"
-                                style="width: 4rem;padding: 0.2rem 0.2rem; font-size: 0.8rem; margin: 0 0.4rem; margin-left: auto;">EN/中</button>
-                            <!-- 添加一個隱藏的語言輸入欄位，用於保存當前語系 -->
-                            <input type="hidden" id="langInput" name="lang" value="">
-                        </label>
-                    </div>
-                </div>
+        <!-- Control Bar -->
+        <div class="control-bar">
+            <form id="queryForm" action="" method="GET" class="control-bar__form">
+                <input type="text" id="addressInput" name="address"
+                    class="control-bar__input"
+                    placeholder="輸入 TRC20 錢包地址"
+                    required>
+                <input type="hidden" id="langInput" name="lang" value="">
             </form>
-        </section>
-        <section>
-            <div>
-                <text id="walletAddressLabel"></text>:
-                <span id="walletAddress" style="color: var(--primary); font-weight: bold; cursor: pointer;"
-                    onclick="copyToClipboard(this.textContent, this, event)"></span>
-                <a id="tronscanIcon" href="#" target="_blank" style="display: none; margin-left: 5px;" title="">
-                    <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTQ2IiBoZWlnaHQ9IjM2IiB2aWV3Qm94PSIwIDAgMTQ2IDM2IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8ZyBjbGlwLXBhdGg9InVybCgjY2xpcDApIj4KPHBhdGggZD0iTTAgNi45ODM4TDE3LjM4ODggMEwzNC44MTUzIDYuOTgzOEwxNy4zNyAxMy45ODY0TDAgNi45ODM4WiIgZmlsbD0iI0MyMzYzMSIvPgo8cGF0aCBkPSJNMS40OTg1NSA2Ljk5MzI5VjI4LjYzMjdMMCAyOC4wMjk1VjYuOTkzMjlIMS40OTg1NVoiIGZpbGw9IiNDMjM2MzEiLz4KPHBhdGggZD0iTTE4LjE1MjIgMTMuMDQzOVYzNC43Nzc2TDE3LjQ3MzYgMzUuMDUwOUwxNi42NjMxIDM0LjcyMVYxMy4wNDM5SDE4LjE1MjJaIiBmaWxsPSIjQzIzNjMxIi8+CjxwYXRoIGQ9Ik0xOS40ODExIDM0LjI0MDVMMTguMTUyMiAzNC43Nzc3TDE3LjQ3MzYgMzUuMDUxTDE2LjY2MzEgMzQuNzIxMUwxNS40NjYxIDM0LjI0MDVMMS40OTg1NSAyOC42MzI3TDAgMjguMDI5NVYyNi40MTc4TDEuNDk4NTUgMjcuMDIxTDE2LjY2MzEgMzMuMTA5NUwxNy40NzM2IDMzLjQzOTNMMTguMTUyMiAzMy43MTI3TDE5LjQ4MTEgMzQuMjQwNVoiIGZpbGw9IiNDMjM2MzEiLz4KPHBhdGggZD0iTTAgNi45ODM3NlY4LjYwNDg0TDE4LjE1MjIgMTUuODkwMlYxNC4yNzg2TDAgNi45ODM3NloiIGZpbGw9IiNDMjM2MzEiLz4KPHBhdGggZD0iTTQzLjA5MDMgMy42NTY3NEwxNy4yODUyIDE0LjAyNEwxNy44NDEyIDE1LjQwOTVMNDMuMDkwMyA1LjI3NzgxVjMuNjU2NzRaIiBmaWxsPSIjQzIzNjMxIi8+CjxwYXRoIGQ9Ik00My4wOTAzIDEwLjE2TDE3LjI4NTIgMjAuNTE3OUwxNy44NDEyIDIxLjkxMjhMNDMuMDkwMyAxMS43NzE3VjEwLjE2WiIgZmlsbD0iI0MyMzYzMSIvPgo8cGF0aCBkPSJNNDMuMDkwMyAxNi42NTM3TDE3LjI4NTIgMjcuMDIxTDE3Ljg0MTIgMjguNDA2NEw0My4wOTAzIDE4LjI3NDhWMTYuNjUzN1oiIGZpbGw9IiNDMjM2MzEiLz4KPHBhdGggZD0iTTQzLjA5MDIgMjMuMTU2N1YyNC43Njg0TDE5LjQ4MSAzNC4yNDAzTDE4LjE1MjEgMzQuNzc3NkwxNy40NzM2IDM1LjA1MDlMMTYuNjYzIDM0LjcyMUwxNS40NjYxIDM0LjI0MDNMMTYuNjYzIDMzLjc1OTdMMTcuNDczNiAzMy40MzkyTDE4LjE1MjEgMzMuMTY1OUw0My4wOTAyIDIzLjE1NjdaIiBmaWxsPSIjQzIzNjMxIi8+CjxwYXRoIGQ9Ik01NC41NzkyIDEzLjYxODlINTAuNzUyN1YxMS42NjhINjEuMTJWMTMuNjE4OUg1Ny4zMDI5VjIzLjM2NDJINTQuNTc5MlYxMy42MTg5WiIgZmlsbD0iIzEwMTAxMCIvPgo8cGF0aCBkPSJNNzAuMjYyMSAyMy4zODNMNjcuMzg3NSAxOC44NDk3SDY1LjUwMjZWMjMuMzczNkg2Mi44MzUzVjExLjY2OEg2Ny41NDc3QzcwLjM3NTIgMTEuNjY4IDcyLjU5IDEyLjUxNjIgNzIuNTkgMTUuMTY0NkM3Mi42MDUyIDE1LjkyNTYgNzIuMzYwNCAxNi42NjkxIDcxLjg5NiAxNy4yNzIyQzcxLjQzMTcgMTcuODc1NCA3MC43NzU1IDE4LjMwMjIgNzAuMDM1OSAxOC40ODIxTDczLjI5NjkgMjMuMzgzSDcwLjI2MjFaTTY1LjU0OTcgMTcuMDExOEg2Ny4yOTMzQzY5LjAwODYgMTcuMDExOCA2OS45NTExIDE2LjM4OTggNjkuOTUxMSAxNS4xMjY5QzY5Ljk1MTEgMTMuODY0IDY5LjAwODYgMTMuNDU4NyA2Ny4yOTMzIDEzLjQ1ODdINjUuNTIxNEw2NS41NDk3IDE3LjAxMThaIiBmaWxsPSIjMTAxMDEwIi8+CjxwYXRoIGQ9Ik03NC40NTYyIDE3LjM4ODhDNzQuNDU2MiAxMy42MTg5IDc2LjkwNjYgMTEuNDUxMiA4MC40NTk4IDExLjQ1MTJDODQuMDEzIDExLjQ1MTIgODYuNDYzNCAxMy42NDcyIDg2LjQ2MzQgMTcuMzg4OEM4Ni40NjM0IDE4LjE3NzIgODYuMzA4MSAxOC45NTc5IDg2LjAwNjQgMTkuNjg2M0M4NS43MDQ3IDIwLjQxNDcgODUuMjYyNSAyMS4wNzY1IDg0LjcwNSAyMS42MzRDODQuMTQ3NSAyMi4xOTE1IDgzLjQ4NTcgMjIuNjMzNyA4Mi43NTczIDIyLjkzNTRDODIuMDI4OSAyMy4yMzcxIDgxLjI0ODIgMjMuMzkyNCA4MC40NTk4IDIzLjM5MjRDNzkuNjcxNCAyMy4zOTI0IDc4Ljg5MDcgMjMuMjM3MSA3OC4xNjIzIDIyLjkzNTRDNzcuNDMzOSAyMi42MzM3IDc2Ljc3MjEgMjIuMTkxNSA3Ni4yMTQ2IDIxLjYzNEM3NS42NTcxIDIxLjA3NjUgNzUuMjE0OSAyMC40MTQ3IDc0LjkxMzIgMTkuNjg2M0M3NC42MTE1IDE4Ljk1NzkgNzQuNDU2MiAxOC4xNzcyIDc0LjQ1NjIgMTcuMzg4OFYxNy4zODg4Wk04My43MzAyIDE3LjM4ODhDODMuNzMwMiAxNC45MTAxIDgyLjQ1NzkgMTMuNDMwNCA4MC40NTk4IDEzLjQzMDRDNzguNDYxNyAxMy40MzA0IDc3LjE5ODggMTQuOTEwMSA3Ny4xOTg4IDE3LjM4ODhDNzcuMTk4OCAxOS44Njc1IDc4LjQ3MTIgMjEuNDIyNiA4MC40NTk4IDIxLjQyMjZDODIuNDQ4NCAyMS40MjI2IDgzLjczOTYgMTkuODQ4NyA4My43Mzk2IDE3LjM4ODhIODMuNzMwMloiIGZpbGw9IiMxMDEwMTAiLz4KPHBhdGggZD0iTTEwMC4wOTIgMjEuNDY5OEwxMDIuNDM4IDIwLjUyNzNDMTAzLjI4MSAyMS4xMzQ3IDEwNC4yOTMgMjEuNDY0MiAxMDUuMzMyIDIxLjQ2OThDMTA2LjcwOCAyMS40Njk4IDEwNy40MzQgMjAuOTcwMiAxMDcuNDM0IDIwLjE2OTFDMTA3LjQzNCAxOS4zNjggMTA2LjYzMyAxOS4wNjY0IDEwNS40NTQgMTguNjQyM0wxMDMuNjczIDE3Ljk5MkMxMDIuMzQ0IDE3LjUxMTMgMTAxLjAwNiAxNi41OTcxIDEwMS4wMDYgMTQuOTQ3OEMxMDEuMDA2IDEzLjA2MjggMTAyLjg5MSAxMS42Nzc0IDEwNS41NjggMTEuNjc3NEMxMDcuNDA2IDExLjY5NjMgMTA5LjE2OCAxMi40MTQgMTEwLjQ5NyAxMy42ODQ5TDEwOC4zNTcgMTQuNTUxOUMxMDcuNTQ3IDEzLjkzMDEgMTA2LjU1MSAxMy41OTgyIDEwNS41MyAxMy42MDk1QzEwNC4zNzEgMTMuNjA5NSAxMDMuNjQ1IDE0LjA1MjQgMTAzLjY0NSAxNC43OTdDMTAzLjY0NSAxNS41NDE1IDEwNC41ODcgMTUuODk5NyAxMDUuNzA5IDE2LjI4NjFMMTA3LjQ0MyAxNi45NjQ3QzEwOS4wNDUgMTcuNTMwMiAxMTAuMDkxIDE4LjQwNjcgMTEwLjA5MSAyMC4wMzcyQzExMC4wOTEgMjEuOTIyMiAxMDguMzAxIDIzLjQ2NzggMTA1LjI1NiAyMy40Njc4QzEwMy4zNjMgMjMuMzgzNiAxMDEuNTQ5IDIyLjY4MTggMTAwLjA5MiAyMS40Njk4VjIxLjQ2OThaIiBmaWxsPSIjMTAxMDEwIi8+CjxwYXRoIGQ9Ik05NS44Nzg4IDExLjY3NzNWMTYuMzMzMVYxOS4xNjA2TDkwLjY5NTIgMTEuNjIwN0g4OC4xNTA1VjIzLjM2NDFIOTAuNjk1MlYxNS44MjQyTDk1Ljg3ODggMjMuMzY0MUg5OC40MTQxVjExLjY2NzlMOTUuODc4OCAxMS42NzczWiIgZmlsbD0iIzEwMTAxMCIvPgo8cGF0aCBkPSJNMTQzLjQ1NSAxMS42NzczVjE2LjMzMzFWMTkuMTYwNkwxMzguMjcyIDExLjYyMDdIMTM1LjcxOFYyMy4zNjQxSDEzOC4yNTNWMTUuODI0MkwxNDMuNDM2IDIzLjM2NDFIMTQ1Ljk4MVYxMS42Njc5TDE0My40NTUgMTEuNjc3M1oiIGZpbGw9IiMxMDEwMTAiLz4KPHBhdGggZD0iTTExOC4wMDggMjEuNDY5OEMxMTYuMDQ4IDIxLjQ2OTggMTE0Ljc5NCAxOS45MjQxIDExNC43OTQgMTcuNTAxOUMxMTQuNzk0IDE1LjA3OTcgMTE2LjA0OCAxMy42MDk1IDExOC4wMDggMTMuNjA5NUMxMTguNTE1IDEzLjU5MDkgMTE5LjAxOCAxMy43MDQ2IDExOS40NjcgMTMuOTM5MkMxMTkuOTE3IDE0LjE3MzkgMTIwLjI5NyAxNC41MjE1IDEyMC41NzIgMTQuOTQ3OEwxMjIuOTM3IDE0LjAwNTNDMTIyLjM4IDEzLjIzMTYgMTIxLjYzNSAxMi42MTE2IDEyMC43NzMgMTIuMjAyOUMxMTkuOTEyIDExLjc5NDMgMTE4Ljk2IDExLjYxMDIgMTE4LjAwOCAxMS42NjhDMTE0LjUxMiAxMS42NjggMTEyLjA5OSAxMy44MTY4IDExMi4wOTkgMTcuNTExM0MxMTIuMDQzIDE4LjMwMjYgMTEyLjE1OCAxOS4wOTY1IDExMi40MzUgMTkuODM5N0MxMTIuNzEyIDIwLjU4MjkgMTEzLjE0NSAyMS4yNTgxIDExMy43MDUgMjEuODE5OUMxMTQuMjY1IDIyLjM4MTYgMTE0LjkzOSAyMi44MTY4IDExNS42ODEgMjMuMDk2MkMxMTYuNDIzIDIzLjM3NTYgMTE3LjIxNyAyMy40OTI3IDExOC4wMDggMjMuNDM5NkMxMTguODg1IDIzLjQ3OTggMTE5Ljc2IDIzLjMxOSAxMjAuNTY1IDIyLjk2OTRDMTIxLjM3IDIyLjYxOTkgMTIyLjA4NSAyMi4wOTA4IDEyMi42NTUgMjEuNDIyN0wxMjAuMjg5IDIwLjQ4MDJDMTIwLjAwNSAyMC44MDIyIDExOS42NTMgMjEuMDU3OCAxMTkuMjU5IDIxLjIyODhDMTE4Ljg2NSAyMS4zOTk4IDExOC40MzggMjEuNDgyMSAxMTguMDA4IDIxLjQ2OThWMjEuNDY5OFoiIGZpbGw9IiMxMDEwMTAiLz4KPHBhdGggZD0iTTEzMy45OTMgMjMuMTk0NUwxMzAuMzE3IDExLjc5MDVWMTEuNjc3NEgxMjcuMzk1VjExLjc5MDVMMTIzLjc0OCAyMy4xOTQ1TDEyMy42ODIgMjMuNDExM0gxMjYuMjkzVjIzLjI4ODhMMTI3LjA1NiAyMC40NjEzSDEzMC41MTVMMTMxLjI4OCAyMy4yODg4VjIzLjQxMTNIMTM0LjAyMUwxMzMuOTkzIDIzLjE5NDVaTTEyOS45NCAxOC4zODc4SDEyNy42NUwxMjcuOTMzIDE3LjM0MTdDMTI4LjIzNCAxNi4yNjczIDEyOC41MzYgMTUuMTY0NiAxMjguNzkgMTQuMDkwMUwxMjkuMDQ1IDE1LjA4OTJDMTI5LjI0MyAxNS44NDMxIDEyOS40NDEgMTYuNjE2IDEyOS42NTcgMTcuMzQxN0wxMjkuOTQgMTguMzg3OFoiIGZpbGw9IiMxMDEwMTAiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMCI+CjxyZWN0IHdpZHRoPSIxNDYiIGhlaWdodD0iMzUuMDUwOSIgZmlsbD0id2hpdGUiLz4KPC9jbGlwUGF0aD4KPC9kZWZzPgo8L3N2Zz4="
-                        alt="Tronscan" style="width: 64px; height: 64px; vertical-align: middle;">
-                </a>
+            <div class="control-bar__buttons">
+                <button id="queryButton" type="button" class="btn btn--primary">查詢</button>
+                <button id="controlButton" type="button" class="btn btn--primary">暫停載入</button>
+                <button id="clearFiltersButton" type="button" class="btn btn--secondary">清除</button>
             </div>
-            <div>
-                <text id="walletBalanceLabel"></text>:
-                <span id="usdtBalance" style="color: var(--primary); font-weight: bold; cursor: pointer;"
-                    onclick="copyToClipboard(this.textContent, this, event)">0</span> USDT,
-                <span id="trxBalance" style="color: var(--primary); font-weight: bold; cursor: pointer;"
-                    onclick="copyToClipboard(this.textContent, this, event)">0</span> TRX,
-                <text id="energyLabel"></text>:
-                <span id="energyBalance" style="color: var(--primary); font-weight: bold;">0</span>
+            <div class="control-bar__lang">
+                <button id="languageToggle" type="button" class="btn btn--outline btn--sm">EN/中</button>
             </div>
-            <div>
-                <span id="matchedTransactionsLabel"></span>: <span id="totalReceivedLabel"></span>
-                <span id="totalReceived" style="color: var(--received-color); font-weight: bold; cursor: pointer;"
-                    onclick="copyToClipboard(this.textContent, this, event)">0</span> ,
-                <span id="totalSentLabel"></span>
-                <span id="totalSent" style="color: var(--sent-color); font-weight: bold; cursor: pointer;"
-                    onclick="copyToClipboard(this.textContent, this, event)">0</span>
-            </div>
-        </section>
-        <section style="margin-bottom: 0.2rem;">
-            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; font-size: 0.6rem;">
-                <!-- 將所有過濾元件包裝在一個容器中，使用相同的垂直對齊方式 -->
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <input type="number" id="minAmount" placeholder="最小金額" value="1"
-                        style="width: 6rem; height:20px; font-size: 0.6rem;">
-                    <input type="number" id="maxAmount" placeholder="最大金額"
-                        style="width: 6rem; height:20px; font-size: 0.6rem;">
-                    <div style="display: flex; align-items: center; gap: 0.2rem;">
-                        <select id="peerAddressFilterType"
-                            style="width: 4rem; padding: 0; height: 1.5rem; font-size: 0.8rem;"></select>
-                        <input type="text" id="peerAddressFilter" placeholder="地址關鍵字"
-                            style="width: 10rem; height:1.5rem; font-size: 0.8rem;">
-                    </div>
-                    <select id="actionFilter" style="width: 80px; padding: 0; height: 1.5rem; font-size: 0.8rem;">
+        </div>
+
+        <!-- Wallet Info -->
+        <div class="wallet-info">
+            <span class="wallet-info__label" id="walletAddressLabel"></span>: <span id="walletAddress" class="wallet-info__value" onclick="copyToClipboard(this.textContent, this, event)"></span>
+            <a id="tronscanIcon" href="#" target="_blank" class="wallet-info__link" title=""><img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTQ2IiBoZWlnaHQ9IjM2IiB2aWV3Qm94PSIwIDAgMTQ2IDM2IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8ZyBjbGlwLXBhdGg9InVybCgjY2xpcDApIj4KPHBhdGggZD0iTTAgNi45ODM4TDE3LjM4ODggMEwzNC44MTUzIDYuOTgzOEwxNy4zNyAxMy45ODY0TDAgNi45ODM4WiIgZmlsbD0iI0MyMzYzMSIvPgo8cGF0aCBkPSJNMS40OTg1NSA2Ljk5MzI5VjI4LjYzMjdMMCAyOC4wMjk1VjYuOTkzMjlIMS40OTg1NVoiIGZpbGw9IiNDMjM2MzEiLz4KPHBhdGggZD0iTTE4LjE1MjIgMTMuMDQzOVYzNC43Nzc2TDE3LjQ3MzYgMzUuMDUwOUwxNi42NjMxIDM0LjcyMVYxMy4wNDM5SDE4LjE1MjJaIiBmaWxsPSIjQzIzNjMxIi8+CjxwYXRoIGQ9Ik0xOS40ODExIDM0LjI0MDVMMTguMTUyMiAzNC43Nzc3TDE3LjQ3MzYgMzUuMDUxTDE2LjY2MzEgMzQuNzIxMUwxNS40NjYxIDM0LjI0MDVMMS40OTg1NSAyOC42MzI3TDAgMjguMDI5NVYyNi40MTc4TDEuNDk4NTUgMjcuMDIxTDE2LjY2MzEgMzMuMTA5NUwxNy40NzM2IDMzLjQzOTNMMTguMTUyMiAzMy43MTI3TDE5LjQ4MTEgMzQuMjQwNVoiIGZpbGw9IiNDMjM2MzEiLz4KPHBhdGggZD0iTTAgNi45ODM3NlY4LjYwNDg0TDE4LjE1MjIgMTUuODkwMlYxNC4yNzg2TDAgNi45ODM3NloiIGZpbGw9IiNDMjM2MzEiLz4KPHBhdGggZD0iTTQzLjA5MDMgMy42NTY3NEwxNy4yODUyIDE0LjAyNEwxNy44NDEyIDE1LjQwOTVMNDMuMDkwMyA1LjI3NzgxVjMuNjU2NzRaIiBmaWxsPSIjQzIzNjMxIi8+CjxwYXRoIGQ9Ik00My4wOTAzIDEwLjE2TDE3LjI4NTIgMjAuNTE3OUwxNy44NDEyIDIxLjkxMjhMNDMuMDkwMyAxMS43NzE3VjEwLjE2WiIgZmlsbD0iI0MyMzYzMSIvPgo8cGF0aCBkPSJNNDMuMDkwMyAxNi42NTM3TDE3LjI4NTIgMjcuMDIxTDE3Ljg0MTIgMjguNDA2NEw0My4wOTAzIDE4LjI3NDhWMTYuNjUzN1oiIGZpbGw9IiNDMjM2MzEiLz4KPHBhdGggZD0iTTQzLjA5MDIgMjMuMTU2N1YyNC43Njg0TDE5LjQ4MSAzNC4yNDAzTDE4LjE1MjEgMzQuNzc3NkwxNy40NzM2IDM1LjA1MDlMMTYuNjYzIDM0LjcyMUwxNS40NjYxIDM0LjI0MDNMMTYuNjYzIDMzLjc1OTdMMTcuNDczNiAzMy40MzkyTDE4LjE1MjEgMzMuMTY1OUw0My4wOTAyIDIzLjE1NjdaIiBmaWxsPSIjQzIzNjMxIi8+CjxwYXRoIGQ9Ik01NC41NzkyIDEzLjYxODlINTAuNzUyN1YxMS42NjhINjEuMTJWMTMuNjE4OUg1Ny4zMDI5VjIzLjM2NDJINTQuNTc5MlYxMy42MTg5WiIgZmlsbD0iIzEwMTAxMCIvPgo8cGF0aCBkPSJNNzAuMjYyMSAyMy4zODNMNjcuMzg3NSAxOC44NDk3SDY1LjUwMjZWMjMuMzczNkg2Mi44MzUzVjExLjY2OEg2Ny41NDc3QzcwLjM3NTIgMTEuNjY4IDcyLjU5IDEyLjUxNjIgNzIuNTkgMTUuMTY0NkM3Mi42MDUyIDE1LjkyNTYgNzIuMzYwNCAxNi42NjkxIDcxLjg5NiAxNy4yNzIyQzcxLjQzMTcgMTcuODc1NCA3MC43NzU1IDE4LjMwMjIgNzAuMDM1OSAxOC40ODIxTDczLjI5NjkgMjMuMzgzSDcwLjI2MjFaTTY1LjU0OTcgMTcuMDExOEg2Ny4yOTMzQzY5LjAwODYgMTcuMDExOCA2OS45NTExIDE2LjM4OTggNjkuOTUxMSAxNS4xMjY5QzY5Ljk1MTEgMTMuODY0IDY5LjAwODYgMTMuNDU4NyA2Ny4yOTMzIDEzLjQ1ODdINjUuNTIxNEw2NS41NDk3IDE3LjAxMThaIiBmaWxsPSIjMTAxMDEwIi8+CjxwYXRoIGQ9Ik03NC40NTYyIDE3LjM4ODhDNzQuNDU2MiAxMy42MTg5IDc2LjkwNjYgMTEuNDUxMiA4MC40NTk4IDExLjQ1MTJDODQuMDEzIDExLjQ1MTIgODYuNDYzNCAxMy42NDcyIDg2LjQ2MzQgMTcuMzg4OEM4Ni40NjM0IDE4LjE3NzIgODYuMzA4MSAxOC45NTc5IDg2LjAwNjQgMTkuNjg2M0M4NS43MDQ3IDIwLjQxNDcgODUuMjYyNSAyMS4wNzY1IDg0LjcwNSAyMS42MzRDODQuMTQ3NSAyMi4xOTE1IDgzLjQ4NTcgMjIuNjMzNyA4Mi43NTczIDIyLjkzNTRDODIuMDI4OSAyMy4yMzcxIDgxLjI0ODIgMjMuMzkyNCA4MC40NTk4IDIzLjM5MjRDNzkuNjcxNCAyMy4zOTI0IDc4Ljg5MDcgMjMuMjM3MSA3OC4xNjIzIDIyLjkzNTRDNzcuNDMzOSAyMi42MzM3IDc2Ljc3MjEgMjIuMTkxNSA3Ni4yMTQ2IDIxLjYzNEM3NS42NTcxIDIxLjA3NjUgNzUuMjE0OSAyMC40MTQ3IDc0LjkxMzIgMTkuNjg2M0M3NC42MTE1IDE4Ljk1NzkgNzQuNDU2MiAxOC4xNzcyIDc0LjQ1NjIgMTcuMzg4OFYxNy4zODg4Wk04My43MzAyIDE3LjM4ODhDODMuNzMwMiAxNC45MTAxIDgyLjQ1NzkgMTMuNDMwNCA4MC40NTk4IDEzLjQzMDRDNzguNDYxNyAxMy40MzA0IDc3LjE5ODggMTQuOTEwMSA3Ny4xOTg4IDE3LjM4ODhDNzcuMTk4OCAxOS44Njc1IDc4LjQ3MTIgMjEuNDIyNiA4MC40NTk4IDIxLjQyMjZDODIuNDQ4NCAyMS40MjI2IDgzLjczOTYgMTkuODQ4NyA4My43Mzk2IDE3LjM4ODhIODMuNzMwMloiIGZpbGw9IiMxMDEwMTAiLz4KPHBhdGggZD0iTTEwMC4wOTIgMjEuNDY5OEwxMDIuNDM4IDIwLjUyNzNDMTAzLjI4MSAyMS4xMzQ3IDEwNC4yOTMgMjEuNDY0MiAxMDUuMzMyIDIxLjQ2OThDMTA2LjcwOCAyMS40Njk4IDEwNy40MzQgMjAuOTcwMiAxMDcuNDM0IDIwLjE2OTFDMTA3LjQzNCAxOS4zNjggMTA2LjYzMyAxOS4wNjY0IDEwNS40NTQgMTguNjQyM0wxMDMuNjczIDE3Ljk5MkMxMDIuMzQ0IDE3LjUxMTMgMTAxLjAwNiAxNi41OTcxIDEwMS4wMDYgMTQuOTQ3OEMxMDEuMDA2IDEzLjA2MjggMTAyLjg5MSAxMS42Nzc0IDEwNS41NjggMTEuNjc3NEMxMDcuNDA2IDExLjY5NjMgMTA5LjE2OCAxMi40MTQgMTEwLjQ5NyAxMy42ODQ5TDEwOC4zNTcgMTQuNTUxOUMxMDcuNTQ3IDEzLjkzMDEgMTA2LjU1MSAxMy41OTgyIDEwNS41MyAxMy42MDk1QzEwNC4zNzEgMTMuNjA5NSAxMDMuNjQ1IDE0LjA1MjQgMTAzLjY0NSAxNC43OTdDMTAzLjY0NSAxNS41NDE1IDEwNC41ODcgMTUuODk5NyAxMDUuNzA5IDE2LjI4NjFMMTA3LjQ0MyAxNi45NjQ3QzEwOS4wNDUgMTcuNTMwMiAxMTAuMDkxIDE4LjQwNjcgMTEwLjA5MSAyMC4wMzcyQzExMC4wOTEgMjEuOTIyMiAxMDguMzAxIDIzLjQ2NzggMTA1LjI1NiAyMy40Njc4QzEwMy4zNjMgMjMuMzgzNiAxMDEuNTQ5IDIyLjY4MTggMTAwLjA5MiAyMS40Njk4VjIxLjQ2OThaIiBmaWxsPSIjMTAxMDEwIi8+CjxwYXRoIGQ9Ik05NS44Nzg4IDExLjY3NzNWMTYuMzMzMVYxOS4xNjA2TDkwLjY5NTIgMTEuNjIwN0g4OC4xNTA1VjIzLjM2NDFIOTAuNjk1MlYxNS44MjQyTDk1Ljg3ODggMjMuMzY0MUg5OC40MTQxVjExLjY2NzlMOTUuODc4OCAxMS42NzczWiIgZmlsbD0iIzEwMTAxMCIvPgo8cGF0aCBkPSJNMTQzLjQ1NSAxMS42NzczVjE2LjMzMzFWMTkuMTYwNkwxMzguMjcyIDExLjYyMDdIMTM1LjcxOFYyMy4zNjQxSDEzOC4yNTNWMTUuODI0MkwxNDMuNDM2IDIzLjM2NDFIMTQ1Ljk4MVYxMS42Njc5TDE0My40NTUgMTEuNjc3M1oiIGZpbGw9IiMxMDEwMTAiLz4KPHBhdGggZD0iTTExOC4wMDggMjEuNDY5OEMxMTYuMDQ4IDIxLjQ2OTggMTE0Ljc5NCAxOS45MjQxIDExNC43OTQgMTcuNTAxOUMxMTQuNzk0IDE1LjA3OTcgMTE2LjA0OCAxMy42MDk1IDExOC4wMDggMTMuNjA5NUMxMTguNTE1IDEzLjU5MDkgMTE5LjAxOCAxMy43MDQ2IDExOS40NjcgMTMuOTM5MkMxMTkuOTE3IDE0LjE3MzkgMTIwLjI5NyAxNC41MjE1IDEyMC41NzIgMTQuOTQ3OEwxMjIuOTM3IDE0LjAwNTNDMTIyLjM4IDEzLjIzMTYgMTIxLjYzNSAxMi42MTE2IDEyMC43NzMgMTIuMjAyOUMxMTkuOTEyIDExLjc5NDMgMTE4Ljk2IDExLjYxMDIgMTE4LjAwOCAxMS42NjhDMTE0LjUxMiAxMS42NjggMTEyLjA5OSAxMy44MTY4IDExMi4wOTkgMTcuNTExM0MxMTIuMDQzIDE4LjMwMjYgMTEyLjE1OCAxOS4wOTY1IDExMi40MzUgMTkuODM5N0MxMTIuNzEyIDIwLjU4MjkgMTEzLjE0NSAyMS4yNTgxIDExMy43MDUgMjEuODE5OUMxMTQuMjY1IDIyLjM4MTYgMTE0LjkzOSAyMi44MTY4IDExNS42ODEgMjMuMDk2MkMxMTYuNDIzIDIzLjM3NTYgMTE3LjIxNyAyMy40OTI3IDExOC4wMDggMjMuNDM5NkMxMTguODg1IDIzLjQ3OTggMTE5Ljc2IDIzLjMxOSAxMjAuNTY1IDIyLjk2OTRDMTIxLjM3IDIyLjYxOTkgMTIyLjA4NSAyMi4wOTA4IDEyMi42NTUgMjEuNDIyN0wxMjAuMjg5IDIwLjQ4MDJDMTIwLjAwNSAyMC44MDIyIDExOS42NTMgMjEuMDU3OCAxMTkuMjU5IDIxLjIyODhDMTE4Ljg2NSAyMS4zOTk4IDExOC40MzggMjEuNDgyMSAxMTguMDA4IDIxLjQ2OThWMjEuNDY5OFoiIGZpbGw9IiMxMDEwMTAiLz4KPHBhdGggZD0iTTEzMy45OTMgMjMuMTk0NUwxMzAuMzE3IDExLjc5MDVWMTEuNjc3NEgxMjcuMzk1VjExLjc5MDVMMTIzLjc0OCAyMy4xOTQ1TDEyMy42ODIgMjMuNDExM0gxMjYuMjkzVjIzLjI4ODhMMTI3LjA1NiAyMC40NjEzSDEzMC41MTVMMTMxLjI4OCAyMy4yODg4VjIzLjQxMTNIMTM0LjAyMUwxMzMuOTkzIDIzLjE5NDVaTTEyOS45NCAxOC4zODc4SDEyNy42NUwxMjcuOTMzIDE3LjM0MTdDMTI4LjIzNCAxNi4yNjczIDEyOC41MzYgMTUuMTY0NiAxMjguNzkgMTQuMDkwMUwxMjkuMDQ1IDE1LjA4OTJDMTI5LjI0MyAxNS44NDMxIDEyOS40NDEgMTYuNjE2IDEyOS42NTcgMTcuMzQxN0wxMjkuOTQgMTguMzg3OFoiIGZpbGw9IiMxMDEwMTAiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMCI+CjxyZWN0IHdpZHRoPSIxNDYiIGhlaWdodD0iMzUuMDUwOSIgZmlsbD0id2hpdGUiLz4KPC9jbGlwUGF0aD4KPC9kZWZzPgo8L3N2Zz4=" alt="Tronscan"></a><br>
+            <span class="wallet-info__label" id="walletBalanceLabel"></span>: <span id="usdtBalance" class="wallet-info__value" onclick="copyToClipboard(this.textContent, this, event)">0</span> <span class="wallet-info__separator">USDT,</span>
+            <span id="trxBalance" class="wallet-info__value" onclick="copyToClipboard(this.textContent, this, event)">0</span> <span class="wallet-info__separator">TRX</span> |
+            <span class="wallet-info__label" id="energyLabel"></span>: <span id="energyBalance" class="wallet-info__value">0</span>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="summary-stats">
+            <span class="summary-stats__label" id="matchedTransactionsLabel"></span>: <span class="summary-stats__label" id="totalReceivedLabel"></span> <span id="totalReceived" class="summary-stats__value summary-stats__value--received" onclick="copyToClipboard(this.textContent, this, event)">0</span>, <span class="summary-stats__label" id="totalSentLabel"></span> <span id="totalSent" class="summary-stats__value summary-stats__value--sent" onclick="copyToClipboard(this.textContent, this, event)">0</span>
+        </div>
+
+        <!-- Filter Panel -->
+        <div class="filter-panel" id="filterPanel">
+            <button type="button" class="btn btn--secondary filter-panel__toggle" id="filterToggle">
+                <span id="filterToggleText">過濾條件</span>
+                <span class="filter-panel__toggle-icon">▼</span>
+            </button>
+            <div class="filter-panel__content" id="filterContent">
+                <!-- Amount filters -->
+                <div class="filter-panel__group">
+                    <input type="number" id="minAmount"
+                        class="filter-panel__input filter-panel__input--amount"
+                        placeholder="最小金額" value="1">
+                    <span class="filter-panel__datetime-separator">-</span>
+                    <input type="number" id="maxAmount"
+                        class="filter-panel__input filter-panel__input--amount"
+                        placeholder="最大金額">
+                </div>
+
+                <!-- Peer address filter -->
+                <div class="filter-panel__group">
+                    <select id="peerAddressFilterType" class="filter-panel__select filter-panel__select--type"></select>
+                    <input type="text" id="peerAddressFilter"
+                        class="filter-panel__input filter-panel__input--address"
+                        placeholder="地址關鍵字">
+                </div>
+
+                <!-- Action filter -->
+                <div class="filter-panel__group">
+                    <select id="actionFilter" class="filter-panel__select filter-panel__select--action">
                         <option value="both">全部</option>
                         <option value="received">收款</option>
                         <option value="sent">付款</option>
                     </select>
-                    <!-- 時間過濾器 (使用文本輸入確保 24 小時制) -->
-                    <!-- 時間過濾器 -->
-                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                        <div class="date-time-group">
-                            <div class="date-input-wrapper">
-                                <input type="date" id="startDate" onclick="try{this.showPicker()}catch(e){}"
-                                    style="width: auto; height: 1.5rem; font-size: 0.8rem; padding: 0 0.2rem;">
-                                <button type="button" id="startTimeToggle" class="time-toggle-btn"
-                                    title="指定時間">⏱️</button>
-                            </div>
-                            <div id="startTimeContainer" style="display: none;">
-                                <input type="time" id="startTime" step="1" value="00:00:00"
-                                    style="width: auto; height: 1.5rem; font-size: 0.8rem; padding: 0 0.2rem;">
-                            </div>
-                        </div>
-                        <span style="font-size: 0.8rem;">~</span>
-                        <div class="date-time-group">
-                            <div class="date-input-wrapper">
-                                <input type="date" id="endDate" onclick="try{this.showPicker()}catch(e){}"
-                                    style="width: auto; height: 1.5rem; font-size: 0.8rem; padding: 0 0.2rem;">
-                                <button type="button" id="endTimeToggle" class="time-toggle-btn"
-                                    title="指定時間">⏱️</button>
-                            </div>
-                            <div id="endTimeContainer" style="display: none;">
-                                <input type="time" id="endTime" step="1" value="00:00:00"
-                                    style="width: auto; height: 1.5rem; font-size: 0.8rem; padding: 0 0.2rem;">
-                            </div>
-                        </div>
+                </div>
 
-                        <!-- 快速選擇按鈕 -->
-                        <div class="quick-btn-group" style="display: flex; gap: 0.2rem;">
-                            <button type="button" id="btnToday" class="outline secondary"
-                                style="padding: 0.1rem 0.3rem; font-size: 0.7rem; width: auto;">今天</button>
-                            <button type="button" id="btn3Days" class="outline secondary"
-                                style="padding: 0.1rem 0.3rem; font-size: 0.7rem; width: auto;">3天內</button>
-                            <button type="button" id="btnWeek" class="outline secondary"
-                                style="padding: 0.1rem 0.3rem; font-size: 0.7rem; width: auto;">一週內</button>
+                <!-- Date/Time filters -->
+                <div class="filter-panel__datetime">
+                    <div class="date-time-group">
+                        <div class="date-input-wrapper">
+                            <input type="date" id="startDate"
+                                class="filter-panel__input"
+                                onclick="try{this.showPicker()}catch(e){}">
+                            <button type="button" id="startTimeToggle" class="time-toggle-btn" title="指定時間">⏱️</button>
+                        </div>
+                        <div id="startTimeContainer" class="filter-panel__time-container" style="display: none;">
+                            <input type="time" id="startTime"
+                                class="filter-panel__input"
+                                step="1" value="00:00:00">
+                        </div>
+                    </div>
+                    <span class="filter-panel__datetime-separator">~</span>
+                    <div class="date-time-group">
+                        <div class="date-input-wrapper">
+                            <input type="date" id="endDate"
+                                class="filter-panel__input"
+                                onclick="try{this.showPicker()}catch(e){}">
+                            <button type="button" id="endTimeToggle" class="time-toggle-btn" title="指定時間">⏱️</button>
+                        </div>
+                        <div id="endTimeContainer" class="filter-panel__time-container" style="display: none;">
+                            <input type="time" id="endTime"
+                                class="filter-panel__input"
+                                step="1" value="00:00:00">
                         </div>
                     </div>
                 </div>
-                <div style="display: flex; flex-direction: column;">
-                    <div id="status" style="font-size: 0.8rem;">等待查詢...</div>
-                    <div id="resultCount" style="white-space: nowrap;"></div>
-                </div>
-            </div>
-        </section>
 
-        <section>
-            <div id="results">
-                <table>
-                    <thead style="font-size: 0.75rem;">
-                        <tr>
-                            <th style="width: 16ch; font-weight: normal; white-space: normal; line-height: 1.1;"
-                                class="sortable" data-field="timestamp" id="timeHeader" title="點擊可切換時間模式"><span
-                                    class="time-display" onclick="toggleTimeDisplayMode()"></span><span
-                                    class="sort-icon" onclick="sortTransactions('timestamp')"></span></th>
-                            <th style="width: 16ch; font-weight: normal;">交易 ID</th>
-                            <th style="width: 6ch; font-weight: normal;" class="sortable" data-field="action"><span
-                                    class="text-content" onclick="sortTransactions('action')">類型</span><span
-                                    class="sort-icon" onclick="sortTransactions('action')"></span></th>
-                            <th style="width: 16ch; font-weight: normal;" class="sortable" data-field="value"><span
-                                    class="text-content" onclick="sortTransactions('value')">金額</span><span
-                                    class="sort-icon" onclick="sortTransactions('value')"></span></th>
-                            <th style="width: 32h; font-weight: normal;">對方地址</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-                <div id="loadingStatusMessage"
-                    style="text-align: center; margin-top: 1rem; font-size: 0.9rem; color: var(--primary); display: none;">
-                    <!-- 載入狀態訊息會在這裡顯示 -->
+                <!-- Quick time buttons -->
+                <div class="filter-panel__quick-buttons">
+                    <button type="button" id="btnToday" class="btn btn--outline btn--sm">今天</button>
+                    <button type="button" id="btn3Days" class="btn btn--outline btn--sm">3天內</button>
+                    <button type="button" id="btnWeek" class="btn btn--outline btn--sm">一週內</button>
+                </div>
+
+                <!-- Status -->
+                <div class="status-bar">
+                    <div id="status" class="status-bar__text">等待查詢...</div>
+                    <div id="resultCount" class="status-bar__count"></div>
                 </div>
             </div>
+        </div>
+
+        <!-- Results Section -->
+        <section class="results" id="results">
+            <!-- Desktop Table View -->
+            <table>
+                <thead>
+                    <tr>
+                        <th class="sortable" data-field="timestamp" id="timeHeader" title="點擊可切換時間模式">
+                            <span class="time-display" onclick="toggleTimeDisplayMode()"></span>
+                            <span class="sort-icon" onclick="sortTransactions('timestamp')"></span>
+                        </th>
+                        <th>交易 ID</th>
+                        <th class="sortable" data-field="action">
+                            <span class="text-content" onclick="sortTransactions('action')">類型</span>
+                            <span class="sort-icon" onclick="sortTransactions('action')"></span>
+                        </th>
+                        <th class="sortable" data-field="value">
+                            <span class="text-content" onclick="sortTransactions('value')">金額</span>
+                            <span class="sort-icon" onclick="sortTransactions('value')"></span>
+                        </th>
+                        <th>對方地址</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <!-- Mobile Card View -->
+            <div class="transaction-cards" id="transactionCards"></div>
+
+            <!-- Loading Status -->
+            <div id="loadingStatusMessage"></div>
         </section>
     </main>
 
